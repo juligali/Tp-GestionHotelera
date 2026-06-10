@@ -1,4 +1,6 @@
 package patrones.comportamiento.observer;
+import modelo.reserva.Reserva;
 
-public class ObservadorReserva {
+public interface ObservadorReserva {
+    void actualizar(Reserva reserva);
 }

@@ -1,4 +1,7 @@
 package patrones.estructurales.decorator;
 
-public class ComponenteEstadia {
+public interface ComponenteEstadia {
+    double getCostoTotal();
+    String getDescripcion();
+
 }

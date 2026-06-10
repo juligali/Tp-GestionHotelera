@@ -1,42 +1,40 @@
 package modelo.usuario;
 
 import enums.Rol;
-import servicios.HabitacionGestor;
-import servicios.ReservaGestor;
-
+import modelo.reserva.Reserva;
+import java.util.ArrayList;
 import java.util.List;
 
 public class Huesped extends UsuarioInterno {
-    private List<UsuarioInterno> usuarios;
+    private List<Reserva> reservas;
+    private String telefono;
 
-    public Administrador(int id, String nombre, String email, String contrasena) {
-        super(id, nombre, email, contrasena, Rol.ADMINISTRADOR);
-        this.usuarios = new java.util.ArrayList<>();
+    public Huesped(int id, String nombre, String email, String contrasena, String telefono) {
+        super(id, nombre, email, contrasena, Rol.HUESPED);
+        this.telefono = telefono;
+        this.reservas = new ArrayList<>();
     }
 
-    public void configurarSistema() {
-        System.out.println("Sistema configurado por administrador: " + getNombre());
+    public void registrar() {
+        System.out.println("Huésped registrado: " + getNombre());
     }
 
-    public void gestionarUsuarios(UsuarioInterno usuario) {
-        usuarios.add(usuario);
-        System.out.println("Usuario agregado: " + usuario.getNombre() + " — Rol: " + usuario.getRol());
+    public void agregarReserva(Reserva reserva) {
+        reservas.add(reserva);
     }
 
-    public void consultarReportes(ReservaGestor reservaGestor, HabitacionGestor habitacionGestor) {
-        System.out.println("=== REPORTE DE RESERVAS ===");
-        reservaGestor.getReservas().forEach(r ->
+    public List<Reserva> getReservas() {
+        return reservas;
+    }
+
+    public String getTelefono() {
+        return telefono;
+    }
+
+    public void consultarHistorial() {
+        System.out.println("=== HISTORIAL DE RESERVAS DE " + getNombre() + " ===");
+        reservas.forEach(r ->
                 System.out.println("Reserva #" + r.getId() +
-                        " — Huésped: " + r.getHuesped().getNombre() +
-                        " — Estado: " + r.getEstadoNombre()));
-        System.out.println("=== REPORTE DE HABITACIONES ===");
-        habitacionGestor.getHabitaciones().forEach(h ->
-                System.out.println("Habitación #" + h.getNumero() +
-                        " — Tipo: " + h.getTipo() +
-                        " — Estado: " + h.getEstado()));
-    }
-
-    public List<UsuarioInterno> getUsuarios() {
-        return usuarios;
+                        " - Estado: " + r.getEstadoNombre()));
     }
 }

@@ -7,6 +7,10 @@ import modelo.habitacion.Habitacion;
 import modelo.usuario.UsuarioInterno;
 import patrones.creacionales.factory.HabitacionFactory;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+
 public class HabitacionGestor {
     private List<Habitacion> habitaciones;
 

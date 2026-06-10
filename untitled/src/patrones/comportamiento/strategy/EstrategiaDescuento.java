@@ -1,7 +1,7 @@
 package patrones.comportamiento.strategy;
 import modelo.promocion.Promocion;
 
-public class EstrategiaDescuento {
+public interface EstrategiaDescuento {
     double calcularDescuento(double monto, Promocion promocion);
 
 }

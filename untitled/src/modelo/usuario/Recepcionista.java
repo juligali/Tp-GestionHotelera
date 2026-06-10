@@ -15,7 +15,7 @@ public class Recepcionista extends UsuarioInterno {
     }
 
     public void gestionarReserva(ReservaGestor gestor, int idReserva) {
-        gestor.confirmarReserva(idReserva);
+        gestor.confirmarReserva(this, idReserva);
     }
 
     public Estadia realizarCheckIn(ReservaGestor reservaGestor, EstadiaGestor estadiaGestor, int idReserva) {
@@ -23,11 +23,11 @@ public class Recepcionista extends UsuarioInterno {
                 .filter(r -> r.getId() == idReserva)
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Reserva no encontrada: " + idReserva));
-        return estadiaGestor.realizarCheckIn(reserva);
+        return estadiaGestor.realizarCheckIn(this, reserva);
     }
 
     public void realizarCheckOut(EstadiaGestor estadiaGestor, Estadia estadia, int pagoId, String metodoPago) {
-        estadiaGestor.realizarCheckOut(estadia, pagoId, metodoPago);
+        estadiaGestor.realizarCheckOut(this, estadia, pagoId, metodoPago);
     }
 
     public void registrarHuesped(Huesped huesped) {

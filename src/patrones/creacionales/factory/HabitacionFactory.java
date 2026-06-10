@@ -1,4 +1,8 @@
 package patrones.creacionales.factory;
 
-public class HabitacionFactory {
+import modelo.habitacion.Habitacion;
+
+public abstract class HabitacionFactory {
+
+    public abstract Habitacion crearHabitacion(int numero);
 }

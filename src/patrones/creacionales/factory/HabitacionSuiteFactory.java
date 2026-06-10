@@ -1,13 +1,13 @@
 package patrones.creacionales.factory;
 
 import modelo.habitacion.Habitacion;
-import modelo.habitacion.HabitacionDoble;
+import modelo.habitacion.HabitacionSuite;
 
-public class HabitacionDobleFactory extends HabitacionFactory {
+public class HabitacionSuiteFactory extends HabitacionFactory {
 
     @Override
     public Habitacion crearHabitacion(int numero) {
-        return new HabitacionDoble(numero);
+        return new HabitacionSuite(numero);
     }
 }
 

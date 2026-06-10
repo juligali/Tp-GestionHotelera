@@ -6,4 +6,6 @@ public enum EstadoHabitacion {
     OCUPADA,
     LIMPIEZA,
     FUERA_DE_SERVICIO
+
+
 }

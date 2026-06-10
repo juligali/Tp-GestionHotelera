@@ -1,4 +1,7 @@
 package enums;
 
-public class Rol {
+public enum Rol {
+    RECEPCIONISTA,
+    PERSONAL_ADMINISTRATIVO,
+    ADMINISTRADOR
 }

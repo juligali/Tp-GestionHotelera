@@ -54,6 +54,15 @@ public class ReservaGestor {
             System.out.println("No se encontró la reserva #" + id);
         }
     }
+    public void cancelarReserva(UsuarioInterno usuario, int id) {
+        validarPermiso(usuario, Rol.RECEPCIONISTA, Rol.ADMINISTRADOR, Rol.PERSONAL_ADMINISTRATIVO);
+        Reserva reserva = buscarPorId(id);
+        if (reserva != null) {
+            reserva.cancelar();
+        } else {
+            System.out.println("No se encontró la reserva #" + id);
+        }
+    }
 
 
     public void cancelarReservaCliente(Huesped huesped, int id) {

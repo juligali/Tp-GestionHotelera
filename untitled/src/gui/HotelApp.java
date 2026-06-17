@@ -375,3 +375,380 @@ public class HotelApp extends Application {
         button.setOnAction(e -> accion.run());
         return button;
     }
+
+    private Label crearLabelConClase(String texto, String clase) {
+        Label label = new Label(texto);
+        label.getStyleClass().add(clase);
+        label.setWrapText(true);
+        return label;
+    }
+
+    private BorderPane crearVistaHabitacionesAdmin() {
+        tablaHabitacionesAdmin = crearTablaHabitaciones(habitaciones);
+
+        TextField numero = new TextField();
+        numero.setPromptText("Ej: 101");
+        ComboBox<TipoHabitacion> tipo = new ComboBox<>(FXCollections.observableArrayList(TipoHabitacion.values()));
+        tipo.setValue(TipoHabitacion.SIMPLE);
+
+        Button crear = new Button("Crear habitacion");
+        crear.getStyleClass().add("button-primary");
+        crear.setOnAction(e -> crearHabitacion(numero, tipo));
+
+        ComboBox<EstadoHabitacion> estado = new ComboBox<>(FXCollections.observableArrayList(EstadoHabitacion.values()));
+        estado.setValue(EstadoHabitacion.DISPONIBLE);
+        Button cambiarEstado = new Button("Cambiar estado");
+        cambiarEstado.getStyleClass().add("button-secondary");
+        cambiarEstado.setOnAction(e -> cambiarEstadoHabitacion(estado));
+
+        GridPane form = crearGrid();
+        form.add(new Label("Numero:"), 0, 0);
+        form.add(numero, 1, 0);
+        form.add(new Label("Tipo:"), 2, 0);
+        form.add(tipo, 3, 0);
+        form.add(crear, 4, 0);
+        form.add(new Label("Nuevo estado:"), 0, 1);
+        form.add(estado, 1, 1);
+        form.add(cambiarEstado, 2, 1);
+        form.getStyleClass().add("toolbar-card");
+
+        BorderPane pane = new BorderPane(tablaHabitacionesAdmin);
+        pane.setTop(form);
+        pane.getStyleClass().add("content-pane");
+        return pane;
+    }
+
+    private BorderPane crearVistaReservasAdmin() {
+        tablaReservasAdmin = crearTablaReservas(reservas);
+
+        TextField nombre = new TextField();
+        nombre.setPromptText("Nombre huesped");
+        TextField email = new TextField();
+        email.setPromptText("Email");
+        TextField telefono = new TextField();
+        telefono.setPromptText("Telefono");
+        ComboBox<TipoHabitacion> tipo = new ComboBox<>(FXCollections.observableArrayList(TipoHabitacion.values()));
+        tipo.setValue(TipoHabitacion.SIMPLE);
+        DatePicker ingreso = new DatePicker(LocalDate.now().plusDays(1));
+        DatePicker egreso = new DatePicker(LocalDate.now().plusDays(2));
+        CheckBox descuento = new CheckBox("Descuento temporada");
+
+        Button crear = new Button("Crear reserva");
+        crear.getStyleClass().add("button-primary");
+        crear.setOnAction(e -> crearReserva(nombre, email, telefono, tipo, ingreso, egreso, descuento, false));
+        Button confirmar = new Button("Confirmar reserva");
+        confirmar.getStyleClass().add("button-secondary");
+        confirmar.setOnAction(e -> cambiarEstadoReserva(true));
+        Button cancelar = new Button("Cancelar reserva");
+        cancelar.getStyleClass().add("button-danger");
+        cancelar.setOnAction(e -> cambiarEstadoReserva(false));
+
+        GridPane form = crearGrid();
+        form.add(new Label("Huesped:"), 0, 0);
+        form.add(nombre, 1, 0);
+        form.add(new Label("Email:"), 2, 0);
+        form.add(email, 3, 0);
+        form.add(new Label("Telefono:"), 4, 0);
+        form.add(telefono, 5, 0);
+        form.add(new Label("Tipo:"), 0, 1);
+        form.add(tipo, 1, 1);
+        form.add(new Label("Ingreso:"), 2, 1);
+        form.add(ingreso, 3, 1);
+        form.add(new Label("Egreso:"), 4, 1);
+        form.add(egreso, 5, 1);
+        form.add(descuento, 1, 2);
+        form.add(crear, 3, 2);
+        form.add(confirmar, 4, 2);
+        form.add(cancelar, 5, 2);
+        form.getStyleClass().add("toolbar-card");
+
+        BorderPane pane = new BorderPane(tablaReservasAdmin);
+        pane.setTop(form);
+        pane.getStyleClass().add("content-pane");
+        return pane;
+    }
+
+    private BorderPane crearVistaEstadiasAdmin() {
+        tablaEstadias = new TableView<>(estadias);
+        tablaEstadias.getStyleClass().add("data-table");
+        tablaEstadias.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tablaEstadias.getColumns().add(columnaTexto("Reserva", e -> String.valueOf(e.getReserva().getId()), 80));
+        tablaEstadias.getColumns().add(columnaTexto("Huesped", e -> e.getReserva().getHuesped().getNombre(), 160));
+        tablaEstadias.getColumns().add(columnaTexto("Check-in", e -> String.valueOf(e.getFechaCheckIn()), 120));
+        tablaEstadias.getColumns().add(columnaTexto("Check-out", e -> String.valueOf(e.getFechaCheckOut()), 120));
+        tablaEstadias.getColumns().add(columnaTexto("Servicios", Estadia::getDescripcionServicios, 420));
+        tablaEstadias.getColumns().add(columnaTexto("Total", e -> "$" + e.getCostoTotal(), 100));
+
+        CheckBox desayuno = new CheckBox("Desayuno");
+        CheckBox spa = new CheckBox("Spa");
+        CheckBox estacionamiento = new CheckBox("Estacionamiento");
+
+        Button checkIn = new Button("Check-in reserva seleccionada");
+        checkIn.getStyleClass().add("button-primary");
+        checkIn.setOnAction(e -> realizarCheckIn());
+        Button agregarServicios = new Button("Agregar servicios");
+        agregarServicios.getStyleClass().add("button-secondary");
+        agregarServicios.setOnAction(e -> agregarServicios(desayuno.isSelected(), spa.isSelected(), estacionamiento.isSelected()));
+        Button checkOut = new Button("Check-out");
+        checkOut.getStyleClass().add("button-danger");
+        checkOut.setOnAction(e -> realizarCheckOut());
+
+        HBox acciones = new HBox(10, checkIn, desayuno, spa, estacionamiento, agregarServicios, checkOut);
+        acciones.setAlignment(Pos.CENTER_LEFT);
+        acciones.getStyleClass().add("action-row");
+
+        Label ayuda = new Label("Para check-in, selecciona una reserva confirmada en la pestana Reservas. Para servicios/check-out, selecciona una estadia aca.");
+        ayuda.getStyleClass().add("section-help");
+        ayuda.setWrapText(true);
+
+        VBox top = new VBox(acciones, ayuda);
+        top.getStyleClass().add("toolbar-card");
+        BorderPane pane = new BorderPane(tablaEstadias);
+        pane.setTop(top);
+        pane.getStyleClass().add("content-pane");
+        return pane;
+    }
+
+    private BorderPane crearVistaHuespedes() {
+        tablaHuespedes = new TableView<>(huespedes);
+        tablaHuespedes.getStyleClass().add("data-table");
+        tablaHuespedes.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tablaHuespedes.getColumns().add(columnaTexto("Nombre", Huesped::getNombre, 180));
+        tablaHuespedes.getColumns().add(columnaTexto("Email", Huesped::getEmail, 220));
+        tablaHuespedes.getColumns().add(columnaTexto("Telefono", Huesped::getTelefono, 140));
+        tablaHuespedes.getColumns().add(columnaTexto("Reservas", h -> String.valueOf(h.getReservas().size()), 100));
+        tablaHuespedes.getColumns().add(columnaTexto("Historial", h -> historialHuesped(h), 420));
+
+        Label ayuda = new Label("Los huespedes se registran automaticamente cuando se crea una reserva desde cliente o usuario interno.");
+        ayuda.getStyleClass().add("section-help");
+        ayuda.setWrapText(true);
+
+        VBox top = new VBox(ayuda);
+        top.getStyleClass().add("toolbar-card");
+
+        BorderPane pane = new BorderPane(tablaHuespedes);
+        pane.setTop(top);
+        pane.getStyleClass().add("content-pane");
+        return pane;
+    }
+
+    private BorderPane crearVistaReportes() {
+        VBox metricas = new VBox(10);
+        metricas.getStyleClass().add("toolbar-card");
+        metricas.getChildren().addAll(
+                new Label("Habitaciones totales: " + habitaciones.size()),
+                new Label("Disponibles: " + contarHabitaciones(EstadoHabitacion.DISPONIBLE)),
+                new Label("Reservadas: " + contarHabitaciones(EstadoHabitacion.RESERVADA)),
+                new Label("Ocupadas: " + contarHabitaciones(EstadoHabitacion.OCUPADA)),
+                new Label("Ocupacion actual: " + calcularOcupacion() + "%"),
+                new Label("Reservas activas: " + contarReservasActivas()),
+                new Label("Pagos registrados: " + pagos.size())
+        );
+
+        Button actualizar = new Button("Actualizar reporte");
+        actualizar.getStyleClass().add("button-secondary");
+        actualizar.setOnAction(e -> mostrarModoAdministrador());
+        metricas.getChildren().add(actualizar);
+
+        BorderPane pane = new BorderPane(metricas);
+        pane.getStyleClass().add("content-pane");
+        return pane;
+    }
+
+    private BorderPane crearVistaPagos() {
+        tablaPagos = new TableView<>(pagos);
+        tablaPagos.getStyleClass().add("data-table");
+        tablaPagos.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tablaPagos.getColumns().add(columna("ID", "id", 70));
+        tablaPagos.getColumns().add(columnaTexto("Monto", p -> "$" + p.getMonto(), 120));
+        tablaPagos.getColumns().add(columnaTexto("Fecha", p -> p.getFecha().toString(), 140));
+        tablaPagos.getColumns().add(columna("Metodo", "metodoPago", 160));
+        tablaPagos.getColumns().add(columnaTexto("Comprobante", Pago::generarComprobante, 500));
+
+        Label ayuda = new Label("Los pagos se registran al realizar check-out y quedan disponibles como transacciones internas simuladas.");
+        ayuda.getStyleClass().add("section-help");
+        ayuda.setWrapText(true);
+
+        VBox top = new VBox(ayuda);
+        top.getStyleClass().add("toolbar-card");
+
+        BorderPane pane = new BorderPane(tablaPagos);
+        pane.setTop(top);
+        pane.getStyleClass().add("content-pane");
+        return pane;
+    }
+
+    private BorderPane crearVistaClienteReserva() {
+        tablaHabitacionesCliente = crearTablaHabitaciones(habitacionesCliente);
+        tablaReservasCliente = crearTablaReservas(reservasCliente);
+
+        TextField nombre = new TextField();
+        nombre.setPromptText("Nombre completo");
+        TextField email = new TextField();
+        email.setPromptText("Email para ver tus reservas");
+        email.setText(emailClienteActual);
+        TextField telefono = new TextField();
+        telefono.setPromptText("Telefono");
+        ComboBox<TipoHabitacion> tipo = new ComboBox<>(FXCollections.observableArrayList(TipoHabitacion.values()));
+        tipo.setValue(TipoHabitacion.SIMPLE);
+        DatePicker ingreso = new DatePicker(LocalDate.now().plusDays(1));
+        DatePicker egreso = new DatePicker(LocalDate.now().plusDays(2));
+        CheckBox descuento = new CheckBox("Aplicar promo temporada");
+
+        emailClienteFiltro = email;
+        tipoClienteFiltro = tipo;
+        ingresoClienteFiltro = ingreso;
+        egresoClienteFiltro = egreso;
+
+        Button buscar = new Button("Buscar disponibilidad");
+        buscar.getStyleClass().add("button-secondary");
+        buscar.setOnAction(e -> filtrarDisponibilidadCliente());
+        Button reservar = new Button("Reservar");
+        reservar.getStyleClass().add("button-primary");
+        reservar.setOnAction(e -> crearReservaCliente(nombre, email, telefono, tipo, ingreso, egreso, descuento));
+        GridPane form = crearGrid();
+        form.add(new Label("Nombre:"), 0, 0);
+        form.add(nombre, 1, 0);
+        form.add(new Label("Email:"), 2, 0);
+        form.add(email, 3, 0);
+        form.add(new Label("Telefono:"), 4, 0);
+        form.add(telefono, 5, 0);
+        form.add(new Label("Tipo:"), 0, 1);
+        form.add(tipo, 1, 1);
+        form.add(new Label("Ingreso:"), 2, 1);
+        form.add(ingreso, 3, 1);
+        form.add(new Label("Egreso:"), 4, 1);
+        form.add(egreso, 5, 1);
+        form.add(descuento, 1, 2);
+        form.add(buscar, 3, 2);
+        form.add(reservar, 4, 2);
+        form.getStyleClass().add("toolbar-card");
+
+        Label disponibles = new Label("Habitaciones disponibles");
+        disponibles.getStyleClass().add("section-title");
+
+        VBox centro = new VBox(10, disponibles, tablaHabitacionesCliente);
+        centro.getStyleClass().add("split-content");
+        VBox.setVgrow(tablaHabitacionesCliente, Priority.ALWAYS);
+
+        BorderPane pane = new BorderPane(centro);
+        pane.setTop(form);
+        pane.getStyleClass().add("content-pane");
+        return pane;
+    }
+
+    private BorderPane crearVistaClienteReservas() {
+        tablaReservasCliente = crearTablaReservas(reservasCliente);
+
+        TextField nombre = new TextField();
+        nombre.setPromptText("Nombre completo");
+        TextField email = new TextField();
+        email.setPromptText("Email para ver tus reservas");
+        email.setText(emailClienteActual);
+        TextField telefono = new TextField();
+        telefono.setPromptText("Telefono");
+        ComboBox<TipoHabitacion> tipo = new ComboBox<>(FXCollections.observableArrayList(TipoHabitacion.values()));
+        tipo.setValue(TipoHabitacion.SIMPLE);
+        DatePicker ingreso = new DatePicker(LocalDate.now().plusDays(1));
+        DatePicker egreso = new DatePicker(LocalDate.now().plusDays(2));
+        CheckBox descuento = new CheckBox("Aplicar promo temporada");
+
+        emailClienteFiltro = email;
+        tipoClienteFiltro = tipo;
+        ingresoClienteFiltro = ingreso;
+        egresoClienteFiltro = egreso;
+
+        Button ver = new Button("Actualizar mis reservas");
+        ver.getStyleClass().add("button-secondary");
+        ver.setOnAction(e -> filtrarReservasCliente());
+        Button modificar = new Button("Modificar seleccionada");
+        modificar.getStyleClass().add("button-secondary");
+        modificar.setOnAction(e -> modificarReservaCliente(nombre, email, telefono, tipo, ingreso, egreso, descuento));
+        Button cancelar = new Button("Cancelar seleccionada");
+        cancelar.getStyleClass().add("button-danger");
+        cancelar.setOnAction(e -> cancelarReservaCliente(email));
+
+        GridPane form = crearGrid();
+        form.add(new Label("Nombre:"), 0, 0);
+        form.add(nombre, 1, 0);
+        form.add(new Label("Email:"), 2, 0);
+        form.add(email, 3, 0);
+        form.add(new Label("Telefono:"), 4, 0);
+        form.add(telefono, 5, 0);
+        form.add(new Label("Tipo:"), 0, 1);
+        form.add(tipo, 1, 1);
+        form.add(new Label("Ingreso:"), 2, 1);
+        form.add(ingreso, 3, 1);
+        form.add(new Label("Egreso:"), 4, 1);
+        form.add(egreso, 5, 1);
+        form.add(descuento, 1, 2);
+        form.add(ver, 3, 2);
+        form.add(modificar, 4, 2);
+        form.add(cancelar, 5, 2);
+        form.getStyleClass().add("toolbar-card");
+
+        Label propias = new Label("Mis reservas");
+        propias.getStyleClass().add("section-title");
+
+        VBox centro = new VBox(10, propias, tablaReservasCliente);
+        centro.getStyleClass().add("split-content");
+        VBox.setVgrow(tablaReservasCliente, Priority.ALWAYS);
+
+        BorderPane pane = new BorderPane(centro);
+        pane.setTop(form);
+        pane.getStyleClass().add("content-pane");
+        filtrarReservasCliente();
+        return pane;
+    }
+
+    private TableView<Habitacion> crearTablaHabitaciones(ObservableList<Habitacion> items) {
+        TableView<Habitacion> tabla = new TableView<>(items);
+        tabla.getStyleClass().add("data-table");
+        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tabla.getColumns().add(columna("Numero", "numero", 90));
+        tabla.getColumns().add(columna("Tipo", "tipo", 120));
+        tabla.getColumns().add(columna("Capacidad", "capacidad", 100));
+        tabla.getColumns().add(columna("Estado", "estado", 150));
+        tabla.getColumns().add(columnaTexto("Precio", h -> "$" + h.getPrecioPorNoche(), 100));
+        tabla.getColumns().add(columnaTexto("Descripcion", Habitacion::getDescripcion, 360));
+        return tabla;
+    }
+
+    private TableView<Reserva> crearTablaReservas(ObservableList<Reserva> items) {
+        TableView<Reserva> tabla = new TableView<>(items);
+        tabla.getStyleClass().add("data-table");
+        tabla.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tabla.getColumns().add(columna("ID", "id", 70));
+        tabla.getColumns().add(columnaTexto("Huesped", r -> r.getHuesped().getNombre(), 160));
+        tabla.getColumns().add(columnaTexto("Habitacion", r -> String.valueOf(r.getHabitacion().getNumero()), 100));
+        tabla.getColumns().add(columnaTexto("Tipo", r -> r.getHabitacion().getTipo().toString(), 100));
+        tabla.getColumns().add(columnaTexto("Ingreso", r -> r.getFechaIngreso().toString(), 110));
+        tabla.getColumns().add(columnaTexto("Egreso", r -> r.getFechaEgreso().toString(), 110));
+        tabla.getColumns().add(columnaTexto("Estado", Reserva::getEstadoNombre, 120));
+        tabla.getColumns().add(columnaTexto("Costo", r -> "$" + r.calcularCostoTotal(), 100));
+        return tabla;
+    }
+
+    private GridPane crearGrid() {
+        GridPane form = new GridPane();
+        form.setHgap(10);
+        form.setVgap(10);
+        form.setPadding(new Insets(14));
+        return form;
+    }
+
+    private void aplicarTema(Scene scene) {
+        URL tema = getClass().getResource("hotel-theme.css");
+        if (tema != null) {
+            scene.getStylesheets().add(tema.toExternalForm());
+            return;
+        }
+
+        File temaEnSrc = new File("src/gui/hotel-theme.css");
+        if (!temaEnSrc.exists()) {
+            temaEnSrc = new File("untitled/src/gui/hotel-theme.css");
+        }
+        if (temaEnSrc.exists()) {
+            scene.getStylesheets().add(temaEnSrc.toURI().toString());
+        }
+    }

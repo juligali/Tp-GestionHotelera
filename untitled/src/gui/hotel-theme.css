@@ -1,0 +1,107 @@
+.root {
+    -fx-font-family: "Segoe UI Variable Display", "Segoe UI", "Arial";
+    -fx-font-size: 13px;
+    -fx-background-color: #f7f5f1;
+    -fx-text-fill: #24221f;
+}
+
+.app-root,
+.app-shell {
+    -fx-background-color: #f7f5f1;
+}
+
+.sidebar {
+    -fx-background-color: #ffffff;
+    -fx-padding: 26 18;
+    -fx-pref-width: 244;
+    -fx-min-width: 224;
+    -fx-border-color: transparent #ece6dc transparent transparent;
+    -fx-effect: dropshadow(gaussian, rgba(42, 35, 26, 0.08), 24, 0.16, 4, 0);
+}
+
+.brand-block {
+    -fx-padding: 0 0 24 2;
+}
+
+.brand-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: 800;
+    -fx-letter-spacing: 0;
+    -fx-text-fill: #2b2520;
+}
+
+.brand-subtitle {
+    -fx-font-size: 12px;
+    -fx-text-fill: #9a8d7b;
+}
+
+.nav-item {
+    -fx-background-color: transparent;
+    -fx-text-fill: #5c554d;
+    -fx-font-size: 14px;
+    -fx-font-weight: 700;
+    -fx-padding: 12 14;
+    -fx-background-radius: 14;
+    -fx-border-radius: 14;
+    -fx-cursor: hand;
+}
+
+.nav-item:hover {
+    -fx-background-color: #f2ede5;
+    -fx-text-fill: #2b2520;
+}
+
+.workspace {
+    -fx-padding: 28 32 24 32;
+    -fx-background-color: #f7f5f1;
+}
+
+.workspace-scroll {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+    -fx-padding: 0;
+}
+
+.page-header {
+    -fx-padding: 0 0 4 0;
+}
+
+.page-title {
+    -fx-font-size: 30px;
+    -fx-font-weight: 800;
+    -fx-text-fill: #241f1a;
+}
+
+.page-subtitle {
+    -fx-font-size: 13px;
+    -fx-text-fill: #918679;
+}
+
+.login-view {
+    -fx-padding: 58 72;
+    -fx-background-color: linear-gradient(to bottom right, #fffdf9, #f1ebe1);
+}
+
+.hero-title {
+    -fx-font-size: 36px;
+    -fx-font-weight: 800;
+    -fx-text-fill: #26211c;
+}
+
+.hero-subtitle,
+.section-help,
+.panel-copy {
+    -fx-text-fill: #7d7368;
+    -fx-font-size: 13px;
+}
+
+.credentials-hint {
+    -fx-background-color: #fffaf1;
+    -fx-background-radius: 14;
+    -fx-border-color: #eadbc4;
+    -fx-border-radius: 14;
+    -fx-padding: 12 14;
+    -fx-text-fill: #6f604f;
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+}

@@ -752,3 +752,366 @@ public class HotelApp extends Application {
             scene.getStylesheets().add(temaEnSrc.toURI().toString());
         }
     }
+
+    private void cargarDatosIniciales() {
+        habitacionGestor.crearHabitacion(admin, 101, new HabitacionSimpleFactory());
+        habitacionGestor.crearHabitacion(admin, 102, new HabitacionDobleFactory());
+        habitacionGestor.crearHabitacion(admin, 201, new HabitacionSuiteFactory());
+        refrescarTablas();
+    }
+
+    private void crearHabitacion(TextField numeroField, ComboBox<TipoHabitacion> tipoCombo) {
+        try {
+            int numero = Integer.parseInt(numeroField.getText().trim());
+            HabitacionFactory factory = factoryPorTipo(tipoCombo.getValue());
+            habitacionGestor.crearHabitacion(admin, numero, factory);
+            numeroField.clear();
+            refrescarTablas();
+            log("Habitacion creada correctamente.");
+        } catch (Exception ex) {
+            mostrarError("No se pudo crear la habitacion", ex);
+        }
+    }
+
+    private void cambiarEstadoHabitacion(ComboBox<EstadoHabitacion> estadoCombo) {
+        Habitacion seleccionada = tablaHabitacionesAdmin.getSelectionModel().getSelectedItem();
+        if (seleccionada == null) {
+            mostrarAlerta("Selecciona una habitacion de la tabla.");
+            return;
+        }
+        habitacionGestor.cambiarEstado(usuarioInternoActual, seleccionada.getNumero(), estadoCombo.getValue());
+        refrescarTablas();
+        log("Estado de habitacion actualizado.");
+    }
+
+    private void crearReservaCliente(TextField nombre, TextField email, TextField telefono,
+                                     ComboBox<TipoHabitacion> tipo, DatePicker ingreso,
+                                     DatePicker egreso, CheckBox descuento) {
+        crearReserva(nombre, email, telefono, tipo, ingreso, egreso, descuento, true);
+    }
+
+    private void crearReserva(TextField nombre, TextField email, TextField telefono,
+                              ComboBox<TipoHabitacion> tipo, DatePicker ingreso,
+                              DatePicker egreso, CheckBox descuento, boolean desdeCliente) {
+        try {
+            validarFechas(ingreso.getValue(), egreso.getValue());
+            Habitacion disponible = habitacionGestor.consultarDisponibilidad(ingreso.getValue(), egreso.getValue(), tipo.getValue())
+                    .stream()
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalStateException("No hay habitaciones disponibles para ese tipo."));
+
+            Huesped huesped = buscarOCrearHuesped(valor(nombre, "Sin nombre"), valor(email, "sin@email.com"), valor(telefono, "Sin telefono"));
+            EstrategiaDescuento estrategia = descuento.isSelected() ? new DescuentoTemporada() : new SinDescuento();
+            Promocion promocion = descuento.isSelected()
+                    ? new Promocion("Promo GUI", 15.0, ingreso.getValue().minusDays(1), egreso.getValue().plusDays(1))
+                    : null;
+
+            UsuarioInterno creador = desdeCliente ? recepcionista : usuarioInternoActual;
+            Reserva reserva = reservaGestor.crearReserva(creador, huesped, disponible, ingreso.getValue(), egreso.getValue(), estrategia, promocion);
+            reserva.agregarObservador(new NotificacionEmailObserver(huesped.getEmail()));
+            reserva.agregarObservador(new NotificacionSMSObserver(huesped.getTelefono()));
+
+            nombre.clear();
+            telefono.clear();
+            if (desdeCliente) {
+                emailClienteActual = valor(email, emailClienteActual);
+            } else {
+                email.clear();
+            }
+            refrescarTablas();
+            filtrarDisponibilidadCliente();
+            filtrarReservasCliente();
+            String origen = desdeCliente ? "Solicitud de cliente" : "Reserva";
+            log(origen + " #" + reserva.getId() + " creada. Costo estimado: $" + reserva.calcularCostoTotal());
+        } catch (Exception ex) {
+            mostrarError("No se pudo crear la reserva", ex);
+        }
+    }
+
+    private void modificarReservaCliente(TextField nombre, TextField email, TextField telefono,
+                                         ComboBox<TipoHabitacion> tipo, DatePicker ingreso,
+                                         DatePicker egreso, CheckBox descuento) {
+        Reserva seleccionada = tablaReservasCliente.getSelectionModel().getSelectedItem();
+        if (seleccionada == null) {
+            mostrarAlerta("Selecciona una reserva propia de la tabla.");
+            return;
+        }
+        try {
+            validarFechas(ingreso.getValue(), egreso.getValue());
+            Huesped huesped = buscarOCrearHuesped(
+                    valor(nombre, seleccionada.getHuesped().getNombre()),
+                    valor(email, seleccionada.getHuesped().getEmail()),
+                    valor(telefono, seleccionada.getHuesped().getTelefono())
+            );
+            Habitacion habitacionNueva = seleccionada.getHabitacion().getTipo() == tipo.getValue()
+                    ? seleccionada.getHabitacion()
+                    : habitacionGestor.consultarDisponibilidad(ingreso.getValue(), egreso.getValue(), tipo.getValue())
+                    .stream()
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalStateException("No hay habitaciones disponibles para ese tipo."));
+            EstrategiaDescuento estrategia = descuento.isSelected() ? new DescuentoTemporada() : new SinDescuento();
+            Promocion promocion = descuento.isSelected()
+                    ? new Promocion("Promo GUI", 15.0, ingreso.getValue().minusDays(1), egreso.getValue().plusDays(1))
+                    : null;
+            reservaGestor.modificarReservaCliente(huesped, seleccionada.getId(), habitacionNueva, ingreso.getValue(), egreso.getValue(), estrategia, promocion);
+            emailClienteActual = huesped.getEmail();
+            refrescarTablas();
+            filtrarDisponibilidadCliente();
+            filtrarReservasCliente();
+            log("Reserva #" + seleccionada.getId() + " modificada por el cliente.");
+        } catch (Exception ex) {
+            mostrarError("No se pudo modificar la reserva", ex);
+        }
+    }
+
+    private void cancelarReservaCliente(TextField email) {
+        Reserva seleccionada = tablaReservasCliente.getSelectionModel().getSelectedItem();
+        if (seleccionada == null) {
+            mostrarAlerta("Selecciona una reserva propia de la tabla.");
+            return;
+        }
+        try {
+            Huesped huesped = buscarOCrearHuesped(seleccionada.getHuesped().getNombre(), valor(email, seleccionada.getHuesped().getEmail()), seleccionada.getHuesped().getTelefono());
+            reservaGestor.cancelarReservaCliente(huesped, seleccionada.getId());
+            refrescarTablas();
+            filtrarDisponibilidadCliente();
+            filtrarReservasCliente();
+            log("Reserva #" + seleccionada.getId() + " cancelada por el cliente.");
+        } catch (Exception ex) {
+            mostrarError("No se pudo cancelar la reserva", ex);
+        }
+    }
+
+    private void cambiarEstadoReserva(boolean confirmar) {
+        Reserva seleccionada = tablaReservasAdmin.getSelectionModel().getSelectedItem();
+        if (seleccionada == null) {
+            mostrarAlerta("Selecciona una reserva de la tabla.");
+            return;
+        }
+        try {
+            if (confirmar) {
+                reservaGestor.confirmarReserva(usuarioInternoActual, seleccionada.getId());
+                log("Reserva #" + seleccionada.getId() + " confirmada.");
+            } else {
+                reservaGestor.cancelarReserva(usuarioInternoActual, seleccionada.getId());
+                log("Reserva #" + seleccionada.getId() + " cancelada.");
+            }
+            refrescarTablas();
+            filtrarDisponibilidadCliente();
+            filtrarReservasCliente();
+        } catch (Exception ex) {
+            mostrarError("No se pudo cambiar el estado de la reserva", ex);
+        }
+    }
+
+    private void realizarCheckIn() {
+        Reserva reserva = tablaReservasAdmin.getSelectionModel().getSelectedItem();
+        if (reserva == null) {
+            mostrarAlerta("Selecciona una reserva confirmada en la pestana Reservas.");
+            return;
+        }
+        try {
+            estadiaGestor.realizarCheckIn(usuarioInternoActual, reserva);
+            refrescarTablas();
+            log("Check-in realizado para la reserva #" + reserva.getId());
+        } catch (Exception ex) {
+            mostrarError("No se pudo realizar el check-in", ex);
+        }
+    }
+
+    private void agregarServicios(boolean desayuno, boolean spa, boolean estacionamiento) {
+        Estadia estadia = tablaEstadias.getSelectionModel().getSelectedItem();
+        if (estadia == null) {
+            mostrarAlerta("Selecciona una estadia de la tabla.");
+            return;
+        }
+        try {
+            int noches = (int) ChronoUnit.DAYS.between(estadia.getReserva().getFechaIngreso(), estadia.getReserva().getFechaEgreso());
+            ComponenteEstadia componente = new EstadiaBase(estadia.getReserva().getHabitacion(), noches);
+            if (desayuno) componente = new DesayunoDecorator(componente);
+            if (spa) componente = new SpaDecorator(componente);
+            if (estacionamiento) componente = new EstacionamientoDecorator(componente);
+            estadiaGestor.agregarServicio(usuarioInternoActual, estadia, componente);
+            refrescarTablas();
+            log("Servicios actualizados. Total: $" + estadia.getCostoTotal());
+        } catch (Exception ex) {
+            mostrarError("No se pudieron agregar los servicios", ex);
+        }
+    }
+
+    private void realizarCheckOut() {
+        Estadia estadia = tablaEstadias.getSelectionModel().getSelectedItem();
+        if (estadia == null) {
+            mostrarAlerta("Selecciona una estadia de la tabla.");
+            return;
+        }
+        try {
+            Pago pago = estadiaGestor.realizarCheckOut(usuarioInternoActual, estadia, pagos.size() + 1, "tarjeta");
+            refrescarTablas();
+            log("Check-out realizado. Monto final: $" + pago.getMonto());
+        } catch (Exception ex) {
+            mostrarError("No se pudo realizar el check-out", ex);
+        }
+    }
+
+    private void filtrarDisponibilidadCliente() {
+        if (tipoClienteFiltro == null || ingresoClienteFiltro == null || egresoClienteFiltro == null) return;
+        try {
+            validarFechas(ingresoClienteFiltro.getValue(), egresoClienteFiltro.getValue());
+            habitacionesCliente.setAll(habitacionGestor.consultarDisponibilidad(
+                    ingresoClienteFiltro.getValue(),
+                    egresoClienteFiltro.getValue(),
+                    tipoClienteFiltro.getValue()
+            ));
+            if (tablaHabitacionesCliente != null) tablaHabitacionesCliente.refresh();
+        } catch (Exception ex) {
+            mostrarError("No se pudo consultar disponibilidad", ex);
+        }
+    }
+
+    private void filtrarReservasCliente() {
+        if (emailClienteFiltro == null) return;
+        String email = valor(emailClienteFiltro, "").toLowerCase(Locale.ROOT);
+        if (email.isEmpty()) {
+            reservasCliente.clear();
+        } else {
+            reservasCliente.setAll(reservas.stream()
+                    .filter(r -> r.getHuesped().getEmail().toLowerCase(Locale.ROOT).equals(email))
+                    .collect(java.util.stream.Collectors.toList()));
+        }
+        if (tablaReservasCliente != null) tablaReservasCliente.refresh();
+    }
+
+    private void refrescarTablas() {
+        habitaciones.setAll(habitacionGestor.getHabitaciones());
+        reservas.setAll(reservaGestor.getReservas());
+        estadias.setAll(estadiaGestor.getEstadias());
+        pagos.setAll(estadiaGestor.getPagos());
+        if (tablaHabitacionesAdmin != null) tablaHabitacionesAdmin.refresh();
+        if (tablaReservasAdmin != null) tablaReservasAdmin.refresh();
+        if (tablaEstadias != null) tablaEstadias.refresh();
+        if (tablaHuespedes != null) tablaHuespedes.refresh();
+        if (tablaPagos != null) tablaPagos.refresh();
+    }
+
+    private UsuarioInterno buscarUsuarioInterno(String usuario, String clave) {
+        String normalizado = usuario.toLowerCase(Locale.ROOT);
+        if ((normalizado.equals("admin") || normalizado.equals(admin.getEmail().toLowerCase(Locale.ROOT))) && admin.login(admin.getEmail(), clave)) {
+            return admin;
+        }
+        if ((normalizado.equals("recepcion") || normalizado.equals(recepcionista.getEmail().toLowerCase(Locale.ROOT))) && recepcionista.login(recepcionista.getEmail(), clave)) {
+            return recepcionista;
+        }
+        if ((normalizado.equals("administrativo") || normalizado.equals(administrativo.getEmail().toLowerCase(Locale.ROOT))) && administrativo.login(administrativo.getEmail(), clave)) {
+            return administrativo;
+        }
+        return null;
+    }
+
+    private Huesped buscarOCrearHuesped(String nombre, String email, String telefono) {
+        for (Huesped huesped : huespedes) {
+            if (huesped.getEmail().equalsIgnoreCase(email)) {
+                return huesped;
+            }
+        }
+        Huesped nuevo = new Huesped(huespedes.size() + 10, nombre, email, "1234", telefono);
+        huespedes.add(nuevo);
+        return nuevo;
+    }
+
+    private String historialHuesped(Huesped huesped) {
+        if (huesped.getReservas().isEmpty()) {
+            return "Sin reservas";
+        }
+        List<String> historial = new ArrayList<>();
+        for (Reserva reserva : huesped.getReservas()) {
+            historial.add("#" + reserva.getId() + " " + reserva.getEstadoNombre());
+        }
+        return String.join(", ", historial);
+    }
+
+    private long contarHabitaciones(EstadoHabitacion estado) {
+        return habitaciones.stream().filter(h -> h.getEstado() == estado).count();
+    }
+
+    private long contarReservasActivas() {
+        return reservas.stream()
+                .filter(r -> !"CANCELADA".equals(r.getEstadoNombre()) && !"FINALIZADA".equals(r.getEstadoNombre()))
+                .count();
+    }
+
+    private String calcularOcupacion() {
+        if (habitaciones.isEmpty()) {
+            return "0";
+        }
+        double porcentaje = (contarHabitaciones(EstadoHabitacion.OCUPADA) * 100.0) / habitaciones.size();
+        return String.format(Locale.ROOT, "%.1f", porcentaje);
+    }
+
+    private double totalPagos() {
+        return pagos.stream().mapToDouble(Pago::getMonto).sum();
+    }
+
+    private HabitacionFactory factoryPorTipo(TipoHabitacion tipo) {
+        return switch (tipo) {
+            case SIMPLE -> new HabitacionSimpleFactory();
+            case DOBLE -> new HabitacionDobleFactory();
+            case SUITE -> new HabitacionSuiteFactory();
+        };
+    }
+
+    private void validarFechas(LocalDate ingreso, LocalDate egreso) {
+        if (ingreso == null || egreso == null) {
+            throw new IllegalArgumentException("Completa fecha de ingreso y egreso.");
+        }
+        if (!egreso.isAfter(ingreso)) {
+            throw new IllegalArgumentException("La fecha de egreso debe ser posterior al ingreso.");
+        }
+    }
+
+    private <T, V> TableColumn<T, V> columna(String titulo, String propiedad, int ancho) {
+        TableColumn<T, V> col = new TableColumn<>(titulo);
+        col.setCellValueFactory(new PropertyValueFactory<>(propiedad));
+        col.setPrefWidth(ancho);
+        return col;
+    }
+
+    private <T> TableColumn<T, String> columnaTexto(String titulo, TextoCelda<T> extractor, int ancho) {
+        TableColumn<T, String> col = new TableColumn<>(titulo);
+        col.setCellValueFactory(data -> new SimpleStringProperty(extractor.obtener(data.getValue())));
+        col.setPrefWidth(ancho);
+        return col;
+    }
+
+    private String valor(TextInputControl field, String defecto) {
+        String texto = field.getText() == null ? "" : field.getText().trim();
+        return texto.isEmpty() ? defecto : texto;
+    }
+
+    private void log(String mensaje) {
+        if (consola != null) consola.appendText(mensaje + "\n");
+    }
+
+    private void mostrarAlerta(String mensaje) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION, mensaje, ButtonType.OK);
+        alert.setHeaderText(null);
+        alert.showAndWait();
+    }
+
+    private void mostrarError(String titulo, Exception ex) {
+        Alert alert = new Alert(Alert.AlertType.ERROR, ex.getMessage(), ButtonType.OK);
+        alert.setHeaderText(titulo);
+        alert.showAndWait();
+        log(titulo + ": " + ex.getMessage());
+    }
+
+    @FunctionalInterface
+    private interface TextoCelda<T> {
+        String obtener(T item);
+    }
+
+    public static void main(String[] args) {
+        launch(args);
+    }
+}
+

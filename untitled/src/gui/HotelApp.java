@@ -69,6 +69,7 @@ public class HotelApp extends Application {
     private final ObservableList<Pago> pagos = FXCollections.observableArrayList();
 
     private BorderPane root;
+    private Stage primaryStage;
     private Label modoActual;
     private TableView<Habitacion> tablaHabitacionesAdmin;
     private TableView<Habitacion> tablaHabitacionesCliente;
@@ -86,6 +87,7 @@ public class HotelApp extends Application {
 
     @Override
     public void start(Stage stage) {
+        this.primaryStage = stage;
         cargarDatosIniciales();
 
         root = new BorderPane();
@@ -128,7 +130,13 @@ public class HotelApp extends Application {
         return header;
     }
 
-    private VBox crearLogin() {
+    private StackPane crearLogin() {
+        Button cerrarButton = new Button("✕");
+        cerrarButton.getStyleClass().add("close-button");
+        cerrarButton.setOnAction(e -> primaryStage.close());
+        StackPane.setAlignment(cerrarButton, Pos.TOP_RIGHT);
+        StackPane.setMargin(cerrarButton, new Insets(20));
+
         Label titulo = new Label("Acceso al sistema");
         titulo.getStyleClass().add("hero-title");
         Label ayuda = new Label("Bragado centraliza reservas, huespedes, habitaciones y estadias en una experiencia simple para equipos de hoteleria.");
@@ -176,7 +184,9 @@ public class HotelApp extends Application {
         VBox selector = new VBox(18, titulo, ayuda, credenciales, botones);
         selector.setAlignment(Pos.CENTER);
         selector.getStyleClass().add("login-view");
-        return selector;
+
+        StackPane contenedor = new StackPane(selector, cerrarButton);
+        return contenedor;
     }
 
     private void validarAdministrador(TextField usuario, PasswordField clave) {

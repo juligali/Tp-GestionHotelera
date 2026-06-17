@@ -4,6 +4,15 @@
     -fx-background-color: #f7f5f1;
     -fx-text-fill: #24221f;
 }
+.close-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: -fx-text-base-color;
+    -fx-font-size: 16px;
+    -fx-cursor: hand;
+}
+.close-button:hover {
+    -fx-text-fill: derive(red, -10%);
+}
 
 .app-root,
 .app-shell {
@@ -105,7 +114,8 @@
     -fx-font-size: 13px;
     -fx-font-weight: 700;
 }
-login-card,
+
+.login-card,
 .toolbar-card,
 .feature-panel,
 .stat-card {

@@ -1,5 +1,6 @@
 package modelo.estadia;
 
+import enums.EstadoHabitacion;
 import modelo.pago.Pago;
 import modelo.reserva.Reserva;
 import patrones.estructurales.decorator.ComponenteEstadia;
@@ -35,10 +36,10 @@ public class Estadia {
         Pago pago = new Pago(pagoId, costoFinal, metodoPago);
         pago.registrarPago();
         reserva.finalizar();
+        reserva.getHabitacion().cambiarEstado(EstadoHabitacion.DISPONIBLE);
         System.out.println("Check-out realizado. " + pago.generarComprobante());
         return pago;
     }
-
     public void agregarServicio(ComponenteEstadia servicioDecorado) {
         this.componenteEstadia = servicioDecorado;
     }

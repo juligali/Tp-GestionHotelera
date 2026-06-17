@@ -56,14 +56,23 @@ public class ReservaGestor {
     }
 
 
-    public void cancelarReserva(UsuarioInterno usuario, int id) {
-        validarPermiso(usuario, Rol.RECEPCIONISTA, Rol.ADMINISTRADOR, Rol.PERSONAL_ADMINISTRATIVO);
+    public void cancelarReservaCliente(Huesped huesped, int id) {
         Reserva reserva = buscarPorId(id);
-        if (reserva != null) {
-            reserva.cancelar();
-        } else {
-            System.out.println("No se encontró la reserva #" + id);
+        if (reserva == null) {
+            throw new IllegalArgumentException("No se encontro la reserva #" + id);
         }
+        validarReservaDelHuesped(huesped, reserva);
+        reserva.cancelar();
+    }
+    public void modificarReservaCliente(Huesped huesped, int id, Habitacion nuevaHabitacion,
+                                        LocalDate fechaIngreso, LocalDate fechaEgreso,
+                                        EstrategiaDescuento estrategia, Promocion promocion) {
+        Reserva reserva = buscarPorId(id);
+        if (reserva == null) {
+            throw new IllegalArgumentException("No se encontro la reserva #" + id);
+        }
+        validarReservaDelHuesped(huesped, reserva);
+        reserva.modificar(nuevaHabitacion, fechaIngreso, fechaEgreso, estrategia, promocion);
     }
 
 
@@ -85,6 +94,13 @@ public class ReservaGestor {
         }
         throw new IllegalStateException("El usuario " + usuario.getNombre() +
                 " no tiene permisos para realizar esta operación.");
+    }
+
+
+    private void validarReservaDelHuesped(Huesped huesped, Reserva reserva) {
+        if (!reserva.getHuesped().getEmail().equalsIgnoreCase(huesped.getEmail())) {
+            throw new IllegalStateException("El huesped solo puede operar sobre sus propias reservas.");
+        }
     }
 
 

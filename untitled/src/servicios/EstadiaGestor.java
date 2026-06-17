@@ -13,15 +13,21 @@ import java.util.List;
 
 public class EstadiaGestor {
     private List<Estadia> estadias;
+    private List<Pago> pagos;
+
 
 
     public EstadiaGestor() {
         this.estadias = new ArrayList<>();
+        this.pagos = new ArrayList<>();
     }
 
 
     public Estadia realizarCheckIn(UsuarioInterno usuario, Reserva reserva) {
         validarPermiso(usuario, Rol.RECEPCIONISTA, Rol.ADMINISTRADOR);
+        if (!"CONFIRMADA".equals(reserva.getEstadoNombre())) {
+            throw new IllegalStateException("Solo se puede hacer check-in de reservas confirmadas.");
+        }
         Estadia estadia = new Estadia(reserva);
         estadia.realizarCheckIn();
         estadias.add(estadia);
@@ -31,7 +37,9 @@ public class EstadiaGestor {
 
     public Pago realizarCheckOut(UsuarioInterno usuario, Estadia estadia, int pagoId, String metodoPago) {
         validarPermiso(usuario, Rol.RECEPCIONISTA, Rol.ADMINISTRADOR);
-        return estadia.realizarCheckOut(pagoId, metodoPago);
+        Pago pago = estadia.realizarCheckOut(pagoId, metodoPago);
+        pagos.add(pago);
+        return pago;
     }
 
 
@@ -54,4 +62,9 @@ public class EstadiaGestor {
     public List<Estadia> getEstadias() {
         return new ArrayList<>(estadias);
     }
+
+    public List<Pago> getPagos() {
+        return new ArrayList<>(pagos);
+    }
+
 }

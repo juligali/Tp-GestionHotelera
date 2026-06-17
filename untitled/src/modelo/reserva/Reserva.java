@@ -58,6 +58,24 @@ public class Reserva {
         notificarObservadores();
     }
 
+    public void modificar(Habitacion nuevaHabitacion, LocalDate nuevaFechaIngreso, LocalDate nuevaFechaEgreso,
+                          EstrategiaDescuento nuevaEstrategia, Promocion nuevaPromocion) {
+        if ("CANCELADA".equals(getEstadoNombre()) || "FINALIZADA".equals(getEstadoNombre())) {
+            throw new IllegalStateException("No se puede modificar una reserva " + getEstadoNombre().toLowerCase() + ".");
+        }
+        if (nuevaHabitacion != habitacion) {
+            habitacion.cambiarEstado(EstadoHabitacion.DISPONIBLE);
+            nuevaHabitacion.cambiarEstado(EstadoHabitacion.RESERVADA);
+            habitacion = nuevaHabitacion;
+        }
+        fechaIngreso = nuevaFechaIngreso;
+        fechaEgreso = nuevaFechaEgreso;
+        estrategia = nuevaEstrategia;
+        promocion = nuevaPromocion;
+        notificarObservadores();
+    }
+
+
     public double calcularCostoTotal() {
         long noches = ChronoUnit.DAYS.between(fechaIngreso, fechaEgreso);
         double costoBase = noches * habitacion.getPrecioPorNoche();

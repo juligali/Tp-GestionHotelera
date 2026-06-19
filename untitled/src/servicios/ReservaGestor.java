@@ -3,11 +3,11 @@ package servicios;
 
 import enums.Rol;
 import modelo.habitacion.Habitacion;
-import modelo.promocion.Promocion;
 import modelo.reserva.Reserva;
 import modelo.usuario.Huesped;
 import modelo.usuario.UsuarioInterno;
 import patrones.comportamiento.strategy.EstrategiaDescuento;
+import patrones.comportamiento.strategy.SinDescuento;
 import patrones.creacionales.builder.ReservaBuilder;
 
 import java.time.LocalDate;
@@ -28,15 +28,13 @@ public class ReservaGestor {
 
 
     public Reserva crearReserva(UsuarioInterno usuario, Huesped huesped, Habitacion habitacion,
-                                LocalDate fechaIngreso, LocalDate fechaEgreso,
-                                EstrategiaDescuento estrategia, Promocion promocion) {
+                                LocalDate fechaIngreso, LocalDate fechaEgreso) {
         validarPermiso(usuario, Rol.RECEPCIONISTA, Rol.ADMINISTRADOR);
         builder = new ReservaBuilder(generarId())
                 .conHuesped(huesped)
                 .conHabitacion(habitacion)
                 .conFechas(fechaIngreso, fechaEgreso)
-                .conEstrategia(estrategia)
-                .conPromocion(promocion);
+                .conEstrategia(new SinDescuento());
         Reserva reserva = builder.build();
         reservas.add(reserva);
         reserva.getHuesped().agregarReserva(reserva);
@@ -45,15 +43,18 @@ public class ReservaGestor {
     }
 
 
-    public void confirmarReserva(UsuarioInterno usuario, int id) {
+    public void confirmarReserva(UsuarioInterno usuario, int id, EstrategiaDescuento estrategia) {
         validarPermiso(usuario, Rol.RECEPCIONISTA, Rol.ADMINISTRADOR);
         Reserva reserva = buscarPorId(id);
         if (reserva != null) {
+            reserva.cambiarEstrategia(estrategia);
             reserva.confirmar();
         } else {
             System.out.println("No se encontró la reserva #" + id);
         }
     }
+
+
     public void cancelarReserva(UsuarioInterno usuario, int id) {
         validarPermiso(usuario, Rol.RECEPCIONISTA, Rol.ADMINISTRADOR, Rol.PERSONAL_ADMINISTRATIVO);
         Reserva reserva = buscarPorId(id);
@@ -73,15 +74,16 @@ public class ReservaGestor {
         validarReservaDelHuesped(huesped, reserva);
         reserva.cancelar();
     }
+
+
     public void modificarReservaCliente(Huesped huesped, int id, Habitacion nuevaHabitacion,
-                                        LocalDate fechaIngreso, LocalDate fechaEgreso,
-                                        EstrategiaDescuento estrategia, Promocion promocion) {
+                                        LocalDate fechaIngreso, LocalDate fechaEgreso) {
         Reserva reserva = buscarPorId(id);
         if (reserva == null) {
             throw new IllegalArgumentException("No se encontro la reserva #" + id);
         }
         validarReservaDelHuesped(huesped, reserva);
-        reserva.modificar(nuevaHabitacion, fechaIngreso, fechaEgreso, estrategia, promocion);
+        reserva.modificar(nuevaHabitacion, fechaIngreso, fechaEgreso);
     }
 
 

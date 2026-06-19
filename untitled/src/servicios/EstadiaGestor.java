@@ -16,7 +16,6 @@ public class EstadiaGestor {
     private List<Pago> pagos;
 
 
-
     public EstadiaGestor() {
         this.estadias = new ArrayList<>();
         this.pagos = new ArrayList<>();
@@ -63,8 +62,8 @@ public class EstadiaGestor {
         return new ArrayList<>(estadias);
     }
 
+
     public List<Pago> getPagos() {
         return new ArrayList<>(pagos);
     }
-
 }

@@ -1,7 +1,6 @@
 package patrones.creacionales.builder;
 
 import modelo.habitacion.Habitacion;
-import modelo.promocion.Promocion;
 import modelo.reserva.Reserva;
 import modelo.usuario.Huesped;
 import patrones.comportamiento.strategy.EstrategiaDescuento;
@@ -17,12 +16,10 @@ public class ReservaBuilder {
     private LocalDate fechaIngreso;
     private LocalDate fechaEgreso;
     private EstrategiaDescuento estrategia;
-    private Promocion promocion;
 
     public ReservaBuilder(int id) {
         this.id = id;
         this.estrategia = new SinDescuento();
-        this.promocion = null;
     }
 
     public ReservaBuilder conHuesped(Huesped huesped) {
@@ -46,10 +43,7 @@ public class ReservaBuilder {
         return this;
     }
 
-    public ReservaBuilder conPromocion(Promocion promocion) {
-        this.promocion = promocion;
-        return this;
-    }
+
 
     public Reserva build() {
         if (huesped == null) throw new IllegalStateException("La reserva debe tener un huésped.");
@@ -57,6 +51,6 @@ public class ReservaBuilder {
         if (fechaIngreso == null || fechaEgreso == null) throw new IllegalStateException("La reserva debe tener fechas.");
         if (!fechaEgreso.isAfter(fechaIngreso)) throw new IllegalStateException("La fecha de egreso debe ser posterior a la de ingreso.");
 
-        return new Reserva(id, huesped, habitacion, fechaIngreso, fechaEgreso, estrategia, promocion);
+        return new Reserva(id, huesped, habitacion, fechaIngreso, fechaEgreso, estrategia);
     }
 }

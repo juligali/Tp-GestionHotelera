@@ -96,7 +96,9 @@ public class Main {
         UsuarioInterno interno = buscarUsuarioInterno(usuario, clave);
 
         if (interno == null) {
-            System.out.println("Usuario o clave incorrectos.");
+            System.out.println("Usuario o " +
+                    "" +
+                    "clave incorrectos.");
             return;
         }
 
@@ -359,9 +361,9 @@ public class Main {
 
         EstrategiaDescuento estrategia = elegirEstrategiaDescuento();
 
-        reservaGestor.confirmarReserva(usuario, id, estrategia);
+        String resultado = reservaGestor.confirmarReserva(usuario, id, estrategia);
 
-        System.out.println("Reserva confirmada correctamente.");
+        System.out.println(resultado);
         System.out.println("Se aplico el descuento seleccionado.");
         System.out.println("Estado actual: " + reserva.getEstadoNombre());
         System.out.println("Total con descuento, sin amenities: $" + reserva.calcularCostoTotal());
@@ -372,7 +374,7 @@ public class Main {
 
         int id = leerEntero("ID de reserva a cancelar: ");
 
-        reservaGestor.cancelarReserva(usuario, id);
+        System.out.println(reservaGestor.cancelarReserva(usuario, id));
     }
 
     private static void cancelarReservaCliente(String email) {
@@ -393,9 +395,7 @@ public class Main {
                 reserva.getHuesped().getTelefono()
         );
 
-        reservaGestor.cancelarReservaCliente(huesped, id);
-
-        System.out.println("Reserva cancelada correctamente.");
+        System.out.println(reservaGestor.cancelarReservaCliente(huesped, id));
     }
 
     private static void realizarCheckIn(UsuarioInterno usuario) {

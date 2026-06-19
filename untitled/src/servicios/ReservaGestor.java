@@ -43,36 +43,34 @@ public class ReservaGestor {
     }
 
 
-    public void confirmarReserva(UsuarioInterno usuario, int id, EstrategiaDescuento estrategia) {
+    public String confirmarReserva(UsuarioInterno usuario, int id, EstrategiaDescuento estrategia) {
         validarPermiso(usuario, Rol.RECEPCIONISTA, Rol.ADMINISTRADOR);
         Reserva reserva = buscarPorId(id);
-        if (reserva != null) {
-            reserva.cambiarEstrategia(estrategia);
-            reserva.confirmar();
-        } else {
-            System.out.println("No se encontró la reserva #" + id);
+        if (reserva == null) {
+            throw new IllegalArgumentException("No se encontró la reserva #" + id);
         }
+        reserva.cambiarEstrategia(estrategia);
+        return reserva.confirmar();
     }
 
 
-    public void cancelarReserva(UsuarioInterno usuario, int id) {
+    public String cancelarReserva(UsuarioInterno usuario, int id) {
         validarPermiso(usuario, Rol.RECEPCIONISTA, Rol.ADMINISTRADOR, Rol.PERSONAL_ADMINISTRATIVO);
         Reserva reserva = buscarPorId(id);
-        if (reserva != null) {
-            reserva.cancelar();
-        } else {
-            System.out.println("No se encontró la reserva #" + id);
+        if (reserva == null) {
+            throw new IllegalArgumentException("No se encontró la reserva #" + id);
         }
+        return reserva.cancelar();
     }
 
 
-    public void cancelarReservaCliente(Huesped huesped, int id) {
+    public String cancelarReservaCliente(Huesped huesped, int id) {
         Reserva reserva = buscarPorId(id);
         if (reserva == null) {
             throw new IllegalArgumentException("No se encontro la reserva #" + id);
         }
         validarReservaDelHuesped(huesped, reserva);
-        reserva.cancelar();
+        return reserva.cancelar();
     }
 
 

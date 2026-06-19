@@ -39,9 +39,10 @@ public class Reserva {
         habitacion.cambiarEstado(EstadoHabitacion.RESERVADA);
     }
 
-    public void confirmar() {
-        estado.confirmar(this);
+    public String confirmar() {
+        String mensaje = estado.confirmar(this);
         notificarObservadores();
+        return mensaje;
     }
 
     public void cambiarEstrategia(EstrategiaDescuento nuevaEstrategia) {
@@ -54,21 +55,24 @@ public class Reserva {
         estrategia = nuevaEstrategia;
     }
 
-    public void cancelar() {
-        estado.cancelar(this);
+    public String cancelar() {
+        String mensaje = estado.cancelar(this);
         habitacion.cambiarEstado(EstadoHabitacion.DISPONIBLE);
         notificarObservadores();
+        return mensaje;
     }
 
-    public void finalizar() {
-        estado.finalizar(this);
+    public String finalizar() {
+        String mensaje = estado.finalizar(this);
         notificarObservadores();
+        return mensaje;
     }
 
     public void modificar(Habitacion nuevaHabitacion, LocalDate nuevaFechaIngreso, LocalDate nuevaFechaEgreso) {
-        if ("CANCELADA".equals(getEstadoNombre()) || "FINALIZADA".equals(getEstadoNombre())) {
-            throw new IllegalStateException("No se puede modificar una reserva " + getEstadoNombre().toLowerCase() + ".");
-        }
+        estado.modificar(this, nuevaHabitacion, nuevaFechaIngreso, nuevaFechaEgreso);
+    }
+
+    public void aplicarModificacion(Habitacion nuevaHabitacion, LocalDate nuevaFechaIngreso, LocalDate nuevaFechaEgreso) {
         if (nuevaHabitacion != habitacion) {
             habitacion.cambiarEstado(EstadoHabitacion.DISPONIBLE);
             nuevaHabitacion.cambiarEstado(EstadoHabitacion.RESERVADA);

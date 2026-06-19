@@ -1,22 +1,31 @@
 package patrones.comportamiento.state.reserva;
 import modelo.reserva.Reserva;
 
+import java.time.LocalDate;
+
+import modelo.habitacion.Habitacion;
+
 public class EstadoConfirmada implements EstadoReserva {
     @Override
-    public void confirmar(Reserva reserva) {
-        System.out.println("La reserva ya está confirmada.");
+    public String confirmar(Reserva reserva) {
+        return "La reserva ya está confirmada.";
     }
 
     @Override
-    public void cancelar(Reserva reserva) {
-        System.out.println("Reserva cancelada desde estado confirmada.");
+    public String cancelar(Reserva reserva) {
         reserva.setEstado(new EstadoCancelada());
+        return "Reserva cancelada desde estado confirmada.";
     }
 
     @Override
-    public void finalizar(Reserva reserva) {
-        System.out.println("Reserva finalizada.");
+    public String finalizar(Reserva reserva) {
         reserva.setEstado(new EstadoFinalizada());
+        return "Reserva finalizada.";
+    }
+
+    @Override
+    public void modificar(Reserva reserva, Habitacion nuevaHabitacion, LocalDate nuevaFechaIngreso, LocalDate nuevaFechaEgreso) {
+        reserva.aplicarModificacion(nuevaHabitacion, nuevaFechaIngreso, nuevaFechaEgreso);
     }
 
     @Override

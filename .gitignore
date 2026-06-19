@@ -1,0 +1,9 @@
+# Salida de compilacion
+out/
+build/
+*.class
+
+# IntelliJ
+.idea/workspace.xml
+.idea/shelf/
+.idea/httpRequests/

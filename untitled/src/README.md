@@ -20,18 +20,18 @@ La aplicación cuenta con una interfaz gráfica desarrollada en JavaFX y tambié
 
 ## Roles del sistema
 
-- **Administrador**: gestiona habitaciones, huéspedes, reservas, estadías, reportes y pagos.
-- **Recepcionista**: gestiona reservas, check-in, check-out, servicios y pagos.
-- **Personal administrativo**: consulta reservas, reportes y pagos.
-- **Huésped/cliente**: consulta disponibilidad, crea reservas y administra sus propias reservas.
+- **Administrador**: gestiona habitaciones (incluido el cambio de estado), huéspedes, reservas, estadías, reportes y pagos.
+- **Recepcionista**: gestiona reservas, check-in, check-out, servicios, pagos y el cambio de estado de las habitaciones.
+- **Personal administrativo**: consulta reservas, huéspedes, reportes y pagos.
+- **Huésped/cliente**: consulta disponibilidad, crea reservas y administra sus propias reservas (consulta, modificación y cancelación).
 
 ## Funcionalidades principales
 
 - Gestión de habitaciones simples, dobles y suites.
-- Control de estados de habitaciones: disponible, reservada, ocupada, limpieza y fuera de servicio.
-- Registro y consulta de huéspedes.
+- Control de estados de habitaciones: disponible, reservada, ocupada, limpieza y fuera de servicio. El administrador y el recepcionista pueden asignar manualmente los estados de limpieza y fuera de servicio.
+- Registro y consulta de huéspedes (listado disponible para administrador y personal administrativo).
 - Creación, confirmación, modificación y cancelación de reservas.
-- Portal de cliente para consultar disponibilidad, reservar y ver reservas propias.
+- Portal de cliente para consultar disponibilidad, reservar, ver, modificar y cancelar sus reservas propias.
 - Gestión de estadías mediante check-in y check-out.
 - Incorporación dinámica de servicios adicionales: desayuno, spa y estacionamiento.
 - Cálculo automático del costo total de una estadía.

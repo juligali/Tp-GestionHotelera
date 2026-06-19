@@ -27,6 +27,7 @@ public class Estadia {
 
     public void realizarCheckIn() {
         this.fechaCheckIn = LocalDate.now();
+        reserva.getHabitacion().cambiarEstado(EstadoHabitacion.OCUPADA);
         System.out.println("Check-in realizado para reserva #" + reserva.getId());
     }
 

@@ -14,9 +14,6 @@ public class Recepcionista extends UsuarioInterno {
         super(id, nombre, email, contrasena, Rol.RECEPCIONISTA);
     }
 
-    public void gestionarReserva(ReservaGestor gestor, int idReserva) {
-        gestor.confirmarReserva(this, idReserva);
-    }
 
     public Estadia realizarCheckIn(ReservaGestor reservaGestor, EstadiaGestor estadiaGestor, int idReserva) {
         Reserva reserva = reservaGestor.getReservas().stream()

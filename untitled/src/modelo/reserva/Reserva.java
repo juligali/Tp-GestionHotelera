@@ -3,7 +3,6 @@ package modelo.reserva;
 
 import enums.EstadoHabitacion;
 import modelo.habitacion.Habitacion;
-import modelo.promocion.Promocion;
 import modelo.usuario.Huesped;
 import patrones.comportamiento.observer.ObservadorReserva;
 import patrones.comportamiento.state.reserva.EstadoReserva;
@@ -24,19 +23,17 @@ public class Reserva {
     private LocalDate fechaEgreso;
     private EstadoReserva estado;
     private EstrategiaDescuento estrategia;
-    private Promocion promocion;
     private List<ObservadorReserva> observadores;
 
     public Reserva(int id, Huesped huesped, Habitacion habitacion,
                    LocalDate fechaIngreso, LocalDate fechaEgreso,
-                   EstrategiaDescuento estrategia, Promocion promocion) {
+                   EstrategiaDescuento estrategia) {
         this.id = id;
         this.huesped = huesped;
         this.habitacion = habitacion;
         this.fechaIngreso = fechaIngreso;
         this.fechaEgreso = fechaEgreso;
         this.estrategia = estrategia;
-        this.promocion = promocion;
         this.estado = new EstadoPendiente();
         this.observadores = new ArrayList<>();
         habitacion.cambiarEstado(EstadoHabitacion.RESERVADA);
@@ -45,6 +42,16 @@ public class Reserva {
     public void confirmar() {
         estado.confirmar(this);
         notificarObservadores();
+    }
+
+    public void cambiarEstrategia(EstrategiaDescuento nuevaEstrategia) {
+        if (!"PENDIENTE".equals(getEstadoNombre())) {
+            throw new IllegalStateException("El descuento solo se puede asignar antes de confirmar la reserva.");
+        }
+        if (nuevaEstrategia == null) {
+            throw new IllegalArgumentException("La estrategia de descuento es obligatoria.");
+        }
+        estrategia = nuevaEstrategia;
     }
 
     public void cancelar() {
@@ -58,8 +65,7 @@ public class Reserva {
         notificarObservadores();
     }
 
-    public void modificar(Habitacion nuevaHabitacion, LocalDate nuevaFechaIngreso, LocalDate nuevaFechaEgreso,
-                          EstrategiaDescuento nuevaEstrategia, Promocion nuevaPromocion) {
+    public void modificar(Habitacion nuevaHabitacion, LocalDate nuevaFechaIngreso, LocalDate nuevaFechaEgreso) {
         if ("CANCELADA".equals(getEstadoNombre()) || "FINALIZADA".equals(getEstadoNombre())) {
             throw new IllegalStateException("No se puede modificar una reserva " + getEstadoNombre().toLowerCase() + ".");
         }
@@ -70,16 +76,13 @@ public class Reserva {
         }
         fechaIngreso = nuevaFechaIngreso;
         fechaEgreso = nuevaFechaEgreso;
-        estrategia = nuevaEstrategia;
-        promocion = nuevaPromocion;
         notificarObservadores();
     }
-
 
     public double calcularCostoTotal() {
         long noches = ChronoUnit.DAYS.between(fechaIngreso, fechaEgreso);
         double costoBase = noches * habitacion.getPrecioPorNoche();
-        return estrategia.calcularDescuento(costoBase, promocion);
+        return estrategia.calcularDescuento(costoBase);
     }
 
     public void agregarObservador(ObservadorReserva observador) {
@@ -110,5 +113,4 @@ public class Reserva {
     public LocalDate getFechaIngreso() { return fechaIngreso; }
     public LocalDate getFechaEgreso() { return fechaEgreso; }
     public EstadoReserva getEstado() { return estado; }
-    public Promocion getPromocion() { return promocion; }
 }

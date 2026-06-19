@@ -244,15 +244,17 @@ public class HotelApp extends Application {
                 crearMarca(),
                 crearNavButton("Dashboard", () -> mostrarModuloInterno("Dashboard", crearDashboardInterno()))
         );
-        if (usuarioInternoActual == admin) {
+        if (usuarioInternoActual == admin || usuarioInternoActual == administrativo) {
             sidebar.getChildren().add(crearNavButton("Huespedes", () -> mostrarModuloInterno("Gestion de huespedes", crearVistaHuespedes())));
-            sidebar.getChildren().add(crearNavButton("Habitaciones", () -> mostrarModuloInterno("Gestion de habitaciones", crearVistaHabitacionesAdmin())));
         }
-        sidebar.getChildren().add(crearNavButton("Reservas", () -> mostrarModuloInterno("Reservas", crearVistaReservasAdmin())));
         if (usuarioInternoActual == admin || usuarioInternoActual == recepcionista) {
+            sidebar.getChildren().add(crearNavButton("Habitaciones", () -> mostrarModuloInterno("Gestion de habitaciones", crearVistaHabitacionesAdmin())));
+            sidebar.getChildren().add(crearNavButton("Reservas", () -> mostrarModuloInterno("Reservas", crearVistaReservasAdmin())));
             sidebar.getChildren().add(crearNavButton("Check-in / out", () -> mostrarModuloInterno("Check-in / Check-out", crearVistaEstadiasAdmin())));
         }
-        sidebar.getChildren().add(crearNavButton("Reportes", () -> mostrarModuloInterno("Reportes", crearVistaReportes())));
+        if (usuarioInternoActual == admin || usuarioInternoActual == administrativo) {
+            sidebar.getChildren().add(crearNavButton("Reportes", () -> mostrarModuloInterno("Reportes", crearVistaReportes())));
+        }
         sidebar.getChildren().add(crearNavButton("Pagos", () -> mostrarModuloInterno("Pagos", crearVistaPagos())));
         sidebar.getChildren().add(crearSidebarSpacer());
         sidebar.getChildren().add(crearNavButton("Salir", () -> root.setCenter(crearLogin())));
@@ -335,11 +337,13 @@ public class HotelApp extends Application {
         );
 
         HBox acciones = new HBox(12);
-        acciones.getChildren().add(crearQuickAction("Nueva reserva", () -> mostrarModuloInterno("Reservas", crearVistaReservasAdmin())));
         if (usuarioInternoActual == admin || usuarioInternoActual == recepcionista) {
+            acciones.getChildren().add(crearQuickAction("Nueva reserva", () -> mostrarModuloInterno("Reservas", crearVistaReservasAdmin())));
             acciones.getChildren().add(crearQuickAction("Check-in", () -> mostrarModuloInterno("Check-in / Check-out", crearVistaEstadiasAdmin())));
         }
-        acciones.getChildren().add(crearQuickAction("Reportes", () -> mostrarModuloInterno("Reportes", crearVistaReportes())));
+        if (usuarioInternoActual == admin || usuarioInternoActual == administrativo) {
+            acciones.getChildren().add(crearQuickAction("Reportes", () -> mostrarModuloInterno("Reportes", crearVistaReportes())));
+        }
         acciones.getStyleClass().add("quick-actions");
 
         BorderPane resumen = new BorderPane();
@@ -401,10 +405,18 @@ public class HotelApp extends Application {
         cambiarEstado.getStyleClass().add("button-secondary");
         cambiarEstado.setOnAction(e -> cambiarEstadoHabitacion(estado));
 
+        Label numeroLabel = new Label("Numero:");
+        Label tipoLabel = new Label("Tipo:");
+        boolean puedeCrear = usuarioInternoActual == admin;
+        for (Region control : new Region[]{numeroLabel, numero, tipoLabel, tipo, crear}) {
+            control.setVisible(puedeCrear);
+            control.setManaged(puedeCrear);
+        }
+
         GridPane form = crearGrid();
-        form.add(new Label("Numero:"), 0, 0);
+        form.add(numeroLabel, 0, 0);
         form.add(numero, 1, 0);
-        form.add(new Label("Tipo:"), 2, 0);
+        form.add(tipoLabel, 2, 0);
         form.add(tipo, 3, 0);
         form.add(crear, 4, 0);
         form.add(new Label("Nuevo estado:"), 0, 1);
@@ -556,7 +568,8 @@ public class HotelApp extends Application {
                 new Label("Ocupadas: " + contarHabitaciones(EstadoHabitacion.OCUPADA)),
                 new Label("Ocupacion actual: " + calcularOcupacion() + "%"),
                 new Label("Reservas activas: " + contarReservasActivas()),
-                new Label("Pagos registrados: " + pagos.size())
+                new Label("Pagos registrados: " + pagos.size()),
+                new Label("Ingresos simulados: $" + totalPagos())
         );
 
         Button actualizar = new Button("Actualizar reporte");
@@ -772,7 +785,7 @@ public class HotelApp extends Application {
         try {
             int numero = Integer.parseInt(numeroField.getText().trim());
             HabitacionFactory factory = factoryPorTipo(tipoCombo.getValue());
-            habitacionGestor.crearHabitacion(admin, numero, factory);
+            habitacionGestor.crearHabitacion(usuarioInternoActual, numero, factory);
             numeroField.clear();
             refrescarTablas();
             log("Habitacion creada correctamente.");

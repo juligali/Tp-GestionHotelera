@@ -17,7 +17,6 @@ import modelo.usuario.PersonalAdministrativo;
 import modelo.estadia.Estadia;
 import modelo.habitacion.Habitacion;
 import modelo.pago.Pago;
-import modelo.promocion.Promocion;
 import modelo.reserva.Reserva;
 import modelo.usuario.Administrador;
 import modelo.usuario.Huesped;
@@ -25,6 +24,7 @@ import modelo.usuario.Recepcionista;
 import modelo.usuario.UsuarioInterno;
 import patrones.comportamiento.observer.NotificacionEmailObserver;
 import patrones.comportamiento.observer.NotificacionSMSObserver;
+import patrones.comportamiento.strategy.DescuentoClienteFrecuente;
 import patrones.comportamiento.strategy.DescuentoTemporada;
 import patrones.comportamiento.strategy.EstrategiaDescuento;
 import patrones.comportamiento.strategy.SinDescuento;
@@ -69,7 +69,6 @@ public class HotelApp extends Application {
     private final ObservableList<Pago> pagos = FXCollections.observableArrayList();
 
     private BorderPane root;
-    private Stage primaryStage;
     private Label modoActual;
     private TableView<Habitacion> tablaHabitacionesAdmin;
     private TableView<Habitacion> tablaHabitacionesCliente;
@@ -87,7 +86,6 @@ public class HotelApp extends Application {
 
     @Override
     public void start(Stage stage) {
-        this.primaryStage = stage;
         cargarDatosIniciales();
 
         root = new BorderPane();
@@ -130,13 +128,7 @@ public class HotelApp extends Application {
         return header;
     }
 
-    private StackPane crearLogin() {
-        Button cerrarButton = new Button("✕");
-        cerrarButton.getStyleClass().add("close-button");
-        cerrarButton.setOnAction(e -> primaryStage.close());
-        StackPane.setAlignment(cerrarButton, Pos.TOP_RIGHT);
-        StackPane.setMargin(cerrarButton, new Insets(20));
-
+    private VBox crearLogin() {
         Label titulo = new Label("Acceso al sistema");
         titulo.getStyleClass().add("hero-title");
         Label ayuda = new Label("Bragado centraliza reservas, huespedes, habitaciones y estadias en una experiencia simple para equipos de hoteleria.");
@@ -184,9 +176,7 @@ public class HotelApp extends Application {
         VBox selector = new VBox(18, titulo, ayuda, credenciales, botones);
         selector.setAlignment(Pos.CENTER);
         selector.getStyleClass().add("login-view");
-
-        StackPane contenedor = new StackPane(selector, cerrarButton);
-        return contenedor;
+        return selector;
     }
 
     private void validarAdministrador(TextField usuario, PasswordField clave) {
@@ -441,17 +431,30 @@ public class HotelApp extends Application {
         tipo.setValue(TipoHabitacion.SIMPLE);
         DatePicker ingreso = new DatePicker(LocalDate.now().plusDays(1));
         DatePicker egreso = new DatePicker(LocalDate.now().plusDays(2));
-        CheckBox descuento = new CheckBox("Descuento temporada");
+        ComboBox<String> descuento = new ComboBox<>(FXCollections.observableArrayList(
+                "Sin descuento", "Temporada (15%)", "Cliente frecuente (10%)"));
+        descuento.setValue("Sin descuento");
 
         Button crear = new Button("Crear reserva");
         crear.getStyleClass().add("button-primary");
-        crear.setOnAction(e -> crearReserva(nombre, email, telefono, tipo, ingreso, egreso, descuento, false));
+        crear.setOnAction(e -> crearReserva(nombre, email, telefono, tipo, ingreso, egreso, false));
         Button confirmar = new Button("Confirmar reserva");
         confirmar.getStyleClass().add("button-secondary");
-        confirmar.setOnAction(e -> cambiarEstadoReserva(true));
+        confirmar.setOnAction(e -> cambiarEstadoReserva(true, descuento.getValue()));
         Button cancelar = new Button("Cancelar reserva");
         cancelar.getStyleClass().add("button-danger");
-        cancelar.setOnAction(e -> cambiarEstadoReserva(false));
+        cancelar.setOnAction(e -> cambiarEstadoReserva(false, null));
+
+        Label descuentoLabel = new Label("Descuento al confirmar:");
+        boolean puedeConfirmar = usuarioInternoActual == admin || usuarioInternoActual == recepcionista;
+        descuentoLabel.setVisible(puedeConfirmar);
+        descuentoLabel.setManaged(puedeConfirmar);
+        descuento.setVisible(puedeConfirmar);
+        descuento.setManaged(puedeConfirmar);
+        crear.setVisible(puedeConfirmar);
+        crear.setManaged(puedeConfirmar);
+        confirmar.setVisible(puedeConfirmar);
+        confirmar.setManaged(puedeConfirmar);
 
         GridPane form = crearGrid();
         form.add(new Label("Huesped:"), 0, 0);
@@ -466,6 +469,7 @@ public class HotelApp extends Application {
         form.add(ingreso, 3, 1);
         form.add(new Label("Egreso:"), 4, 1);
         form.add(egreso, 5, 1);
+        form.add(descuentoLabel, 0, 2);
         form.add(descuento, 1, 2);
         form.add(crear, 3, 2);
         form.add(confirmar, 4, 2);
@@ -603,8 +607,6 @@ public class HotelApp extends Application {
         tipo.setValue(TipoHabitacion.SIMPLE);
         DatePicker ingreso = new DatePicker(LocalDate.now().plusDays(1));
         DatePicker egreso = new DatePicker(LocalDate.now().plusDays(2));
-        CheckBox descuento = new CheckBox("Aplicar promo temporada");
-
         emailClienteFiltro = email;
         tipoClienteFiltro = tipo;
         ingresoClienteFiltro = ingreso;
@@ -615,7 +617,7 @@ public class HotelApp extends Application {
         buscar.setOnAction(e -> filtrarDisponibilidadCliente());
         Button reservar = new Button("Reservar");
         reservar.getStyleClass().add("button-primary");
-        reservar.setOnAction(e -> crearReservaCliente(nombre, email, telefono, tipo, ingreso, egreso, descuento));
+        reservar.setOnAction(e -> crearReservaCliente(nombre, email, telefono, tipo, ingreso, egreso));
         GridPane form = crearGrid();
         form.add(new Label("Nombre:"), 0, 0);
         form.add(nombre, 1, 0);
@@ -629,7 +631,6 @@ public class HotelApp extends Application {
         form.add(ingreso, 3, 1);
         form.add(new Label("Egreso:"), 4, 1);
         form.add(egreso, 5, 1);
-        form.add(descuento, 1, 2);
         form.add(buscar, 3, 2);
         form.add(reservar, 4, 2);
         form.getStyleClass().add("toolbar-card");
@@ -661,8 +662,6 @@ public class HotelApp extends Application {
         tipo.setValue(TipoHabitacion.SIMPLE);
         DatePicker ingreso = new DatePicker(LocalDate.now().plusDays(1));
         DatePicker egreso = new DatePicker(LocalDate.now().plusDays(2));
-        CheckBox descuento = new CheckBox("Aplicar promo temporada");
-
         emailClienteFiltro = email;
         tipoClienteFiltro = tipo;
         ingresoClienteFiltro = ingreso;
@@ -673,7 +672,7 @@ public class HotelApp extends Application {
         ver.setOnAction(e -> filtrarReservasCliente());
         Button modificar = new Button("Modificar seleccionada");
         modificar.getStyleClass().add("button-secondary");
-        modificar.setOnAction(e -> modificarReservaCliente(nombre, email, telefono, tipo, ingreso, egreso, descuento));
+        modificar.setOnAction(e -> modificarReservaCliente(nombre, email, telefono, tipo, ingreso, egreso));
         Button cancelar = new Button("Cancelar seleccionada");
         cancelar.getStyleClass().add("button-danger");
         cancelar.setOnAction(e -> cancelarReservaCliente(email));
@@ -691,7 +690,6 @@ public class HotelApp extends Application {
         form.add(ingreso, 3, 1);
         form.add(new Label("Egreso:"), 4, 1);
         form.add(egreso, 5, 1);
-        form.add(descuento, 1, 2);
         form.add(ver, 3, 2);
         form.add(modificar, 4, 2);
         form.add(cancelar, 5, 2);
@@ -796,13 +794,13 @@ public class HotelApp extends Application {
 
     private void crearReservaCliente(TextField nombre, TextField email, TextField telefono,
                                      ComboBox<TipoHabitacion> tipo, DatePicker ingreso,
-                                     DatePicker egreso, CheckBox descuento) {
-        crearReserva(nombre, email, telefono, tipo, ingreso, egreso, descuento, true);
+                                     DatePicker egreso) {
+        crearReserva(nombre, email, telefono, tipo, ingreso, egreso, true);
     }
 
     private void crearReserva(TextField nombre, TextField email, TextField telefono,
                               ComboBox<TipoHabitacion> tipo, DatePicker ingreso,
-                              DatePicker egreso, CheckBox descuento, boolean desdeCliente) {
+                              DatePicker egreso, boolean desdeCliente) {
         try {
             validarFechas(ingreso.getValue(), egreso.getValue());
             Habitacion disponible = habitacionGestor.consultarDisponibilidad(ingreso.getValue(), egreso.getValue(), tipo.getValue())
@@ -811,13 +809,8 @@ public class HotelApp extends Application {
                     .orElseThrow(() -> new IllegalStateException("No hay habitaciones disponibles para ese tipo."));
 
             Huesped huesped = buscarOCrearHuesped(valor(nombre, "Sin nombre"), valor(email, "sin@email.com"), valor(telefono, "Sin telefono"));
-            EstrategiaDescuento estrategia = descuento.isSelected() ? new DescuentoTemporada() : new SinDescuento();
-            Promocion promocion = descuento.isSelected()
-                    ? new Promocion("Promo GUI", 15.0, ingreso.getValue().minusDays(1), egreso.getValue().plusDays(1))
-                    : null;
-
             UsuarioInterno creador = desdeCliente ? recepcionista : usuarioInternoActual;
-            Reserva reserva = reservaGestor.crearReserva(creador, huesped, disponible, ingreso.getValue(), egreso.getValue(), estrategia, promocion);
+            Reserva reserva = reservaGestor.crearReserva(creador, huesped, disponible, ingreso.getValue(), egreso.getValue());
             reserva.agregarObservador(new NotificacionEmailObserver(huesped.getEmail()));
             reserva.agregarObservador(new NotificacionSMSObserver(huesped.getTelefono()));
 
@@ -840,7 +833,7 @@ public class HotelApp extends Application {
 
     private void modificarReservaCliente(TextField nombre, TextField email, TextField telefono,
                                          ComboBox<TipoHabitacion> tipo, DatePicker ingreso,
-                                         DatePicker egreso, CheckBox descuento) {
+                                         DatePicker egreso) {
         Reserva seleccionada = tablaReservasCliente.getSelectionModel().getSelectedItem();
         if (seleccionada == null) {
             mostrarAlerta("Selecciona una reserva propia de la tabla.");
@@ -859,11 +852,7 @@ public class HotelApp extends Application {
                     .stream()
                     .findFirst()
                     .orElseThrow(() -> new IllegalStateException("No hay habitaciones disponibles para ese tipo."));
-            EstrategiaDescuento estrategia = descuento.isSelected() ? new DescuentoTemporada() : new SinDescuento();
-            Promocion promocion = descuento.isSelected()
-                    ? new Promocion("Promo GUI", 15.0, ingreso.getValue().minusDays(1), egreso.getValue().plusDays(1))
-                    : null;
-            reservaGestor.modificarReservaCliente(huesped, seleccionada.getId(), habitacionNueva, ingreso.getValue(), egreso.getValue(), estrategia, promocion);
+            reservaGestor.modificarReservaCliente(huesped, seleccionada.getId(), habitacionNueva, ingreso.getValue(), egreso.getValue());
             emailClienteActual = huesped.getEmail();
             refrescarTablas();
             filtrarDisponibilidadCliente();
@@ -892,7 +881,7 @@ public class HotelApp extends Application {
         }
     }
 
-    private void cambiarEstadoReserva(boolean confirmar) {
+    private void cambiarEstadoReserva(boolean confirmar, String descuentoSeleccionado) {
         Reserva seleccionada = tablaReservasAdmin.getSelectionModel().getSelectedItem();
         if (seleccionada == null) {
             mostrarAlerta("Selecciona una reserva de la tabla.");
@@ -900,7 +889,8 @@ public class HotelApp extends Application {
         }
         try {
             if (confirmar) {
-                reservaGestor.confirmarReserva(usuarioInternoActual, seleccionada.getId());
+                EstrategiaDescuento estrategia = estrategiaPorNombre(descuentoSeleccionado);
+                reservaGestor.confirmarReserva(usuarioInternoActual, seleccionada.getId(), estrategia);
                 log("Reserva #" + seleccionada.getId() + " confirmada.");
             } else {
                 reservaGestor.cancelarReserva(usuarioInternoActual, seleccionada.getId());
@@ -912,6 +902,12 @@ public class HotelApp extends Application {
         } catch (Exception ex) {
             mostrarError("No se pudo cambiar el estado de la reserva", ex);
         }
+    }
+
+    private EstrategiaDescuento estrategiaPorNombre(String nombre) {
+        if ("Temporada (15%)".equals(nombre)) return new DescuentoTemporada();
+        if ("Cliente frecuente (10%)".equals(nombre)) return new DescuentoClienteFrecuente();
+        return new SinDescuento();
     }
 
     private void realizarCheckIn() {
@@ -1124,4 +1120,3 @@ public class HotelApp extends Application {
         launch(args);
     }
 }
-

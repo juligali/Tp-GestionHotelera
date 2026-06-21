@@ -4,6 +4,7 @@ import enums.EstadoHabitacion;
 import enums.Rol;
 import enums.TipoHabitacion;
 import modelo.habitacion.Habitacion;
+import modelo.reserva.Reserva;
 import modelo.usuario.UsuarioInterno;
 import patrones.creacionales.factory.HabitacionFactory;
 
@@ -39,6 +40,35 @@ public class HabitacionGestor {
             if (h.getTipo() == tipo && h.estaDisponible()) {
                 disponibles.add(h);
             }
+        }
+        return disponibles;
+    }
+
+    public List<Habitacion> consultarDisponibilidad(LocalDate fechaIngreso, LocalDate fechaEgreso,
+                                                    TipoHabitacion tipo, int capacidadMinima,
+                                                    List<Reserva> reservas) {
+        if (fechaIngreso == null || fechaEgreso == null || !fechaEgreso.isAfter(fechaIngreso)) {
+            throw new IllegalArgumentException("La fecha de egreso debe ser posterior al ingreso.");
+        }
+        if (capacidadMinima <= 0) {
+            throw new IllegalArgumentException("La cantidad de huespedes debe ser mayor a cero.");
+        }
+
+        List<Habitacion> disponibles = new ArrayList<>();
+        for (Habitacion habitacion : habitaciones) {
+            if (habitacion.getTipo() != tipo || habitacion.getCapacidad() < capacidadMinima) continue;
+            if (habitacion.getEstado() == EstadoHabitacion.OCUPADA
+                    || habitacion.getEstado() == EstadoHabitacion.LIMPIEZA
+                    || habitacion.getEstado() == EstadoHabitacion.FUERA_DE_SERVICIO) continue;
+
+            boolean tieneCruce = reservas.stream()
+                    .filter(r -> r.getHabitacion().getNumero() == habitacion.getNumero())
+                    .filter(r -> !"CANCELADA".equals(r.getEstadoNombre())
+                            && !"FINALIZADA".equals(r.getEstadoNombre()))
+                    .anyMatch(r -> fechaIngreso.isBefore(r.getFechaEgreso())
+                            && fechaEgreso.isAfter(r.getFechaIngreso()));
+
+            if (!tieneCruce) disponibles.add(habitacion);
         }
         return disponibles;
     }

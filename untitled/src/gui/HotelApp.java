@@ -15,6 +15,7 @@ import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import modelo.usuario.PersonalAdministrativo;
 import modelo.estadia.Estadia;
+import modelo.estadia.TipoAmenity;
 import modelo.habitacion.Habitacion;
 import modelo.pago.Pago;
 import modelo.reserva.Reserva;
@@ -32,11 +33,6 @@ import patrones.creacionales.factory.HabitacionDobleFactory;
 import patrones.creacionales.factory.HabitacionFactory;
 import patrones.creacionales.factory.HabitacionSimpleFactory;
 import patrones.creacionales.factory.HabitacionSuiteFactory;
-import patrones.estructurales.decorator.ComponenteEstadia;
-import patrones.estructurales.decorator.DesayunoDecorator;
-import patrones.estructurales.decorator.EstacionamientoDecorator;
-import patrones.estructurales.decorator.EstadiaBase;
-import patrones.estructurales.decorator.SpaDecorator;
 import servicios.EstadiaGestor;
 import servicios.HabitacionGestor;
 import servicios.ReservaGestor;
@@ -46,8 +42,10 @@ import java.net.URL;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class HotelApp extends Application {
 
@@ -61,12 +59,15 @@ public class HotelApp extends Application {
     private UsuarioInterno usuarioInternoActual = admin;
 
     private final ObservableList<Habitacion> habitaciones = FXCollections.observableArrayList();
+    private final ObservableList<Habitacion> habitacionesDisponiblesInterno = FXCollections.observableArrayList();
     private final ObservableList<Habitacion> habitacionesCliente = FXCollections.observableArrayList();
     private final ObservableList<Reserva> reservas = FXCollections.observableArrayList();
     private final ObservableList<Reserva> reservasCliente = FXCollections.observableArrayList();
     private final ObservableList<Estadia> estadias = FXCollections.observableArrayList();
     private final ObservableList<Huesped> huespedes = FXCollections.observableArrayList();
     private final ObservableList<Pago> pagos = FXCollections.observableArrayList();
+    private final Map<Integer, Pago> pagosPorReserva = new HashMap<>();
+    private final Map<Integer, Double> totalesFinalesPorReserva = new HashMap<>();
 
     private BorderPane root;
     private Label modoActual;
@@ -77,10 +78,12 @@ public class HotelApp extends Application {
     private TableView<Estadia> tablaEstadias;
     private TableView<Huesped> tablaHuespedes;
     private TableView<Pago> tablaPagos;
+    private ComboBox<Integer> reservaCheckInCombo;
     private TextArea consola;
     private String emailClienteActual = "";
     private TextField emailClienteFiltro;
     private ComboBox<TipoHabitacion> tipoClienteFiltro;
+    private TextField capacidadClienteFiltro;
     private DatePicker ingresoClienteFiltro;
     private DatePicker egresoClienteFiltro;
 
@@ -210,9 +213,8 @@ public class HotelApp extends Application {
     private void mostrarModoCliente() {
         modoActual.setText("Modo cliente");
         root.setTop(null);
-        root.setCenter(crearShellCliente("Reservar estadia", crearVistaClienteReserva()));
+        root.setCenter(crearShellCliente("Disponibilidad", crearVistaDisponibilidadCliente()));
         refrescarTablas();
-        filtrarDisponibilidadCliente();
         filtrarReservasCliente();
         log("Vista de cliente activa.");
     }
@@ -244,17 +246,18 @@ public class HotelApp extends Application {
                 crearMarca(),
                 crearNavButton("Dashboard", () -> mostrarModuloInterno("Dashboard", crearDashboardInterno()))
         );
-        if (usuarioInternoActual == admin || usuarioInternoActual == administrativo) {
+        if (usuarioInternoActual == admin) {
             sidebar.getChildren().add(crearNavButton("Huespedes", () -> mostrarModuloInterno("Gestion de huespedes", crearVistaHuespedes())));
+            sidebar.getChildren().add(crearNavButton("Habitaciones", () -> mostrarModuloInterno("Habitaciones disponibles", crearVistaHabitacionesAdmin())));
         }
         if (usuarioInternoActual == admin || usuarioInternoActual == recepcionista) {
-            sidebar.getChildren().add(crearNavButton("Habitaciones", () -> mostrarModuloInterno("Gestion de habitaciones", crearVistaHabitacionesAdmin())));
-            sidebar.getChildren().add(crearNavButton("Reservas", () -> mostrarModuloInterno("Reservas", crearVistaReservasAdmin())));
+            sidebar.getChildren().add(crearNavButton("Crear reserva", () -> mostrarModuloInterno("Crear reserva", crearVistaCrearReservaInterna())));
+            sidebar.getChildren().add(crearNavButton("Confirmar / cancelar", () -> mostrarModuloInterno("Confirmar / cancelar reservas", crearVistaGestionReservas())));
             sidebar.getChildren().add(crearNavButton("Check-in / out", () -> mostrarModuloInterno("Check-in / Check-out", crearVistaEstadiasAdmin())));
+        } else {
+            sidebar.getChildren().add(crearNavButton("Reservas", () -> mostrarModuloInterno("Reservas", crearVistaGestionReservas())));
         }
-        if (usuarioInternoActual == admin || usuarioInternoActual == administrativo) {
-            sidebar.getChildren().add(crearNavButton("Reportes", () -> mostrarModuloInterno("Reportes", crearVistaReportes())));
-        }
+        sidebar.getChildren().add(crearNavButton("Reportes", () -> mostrarModuloInterno("Reportes", crearVistaReportes())));
         sidebar.getChildren().add(crearNavButton("Pagos", () -> mostrarModuloInterno("Pagos", crearVistaPagos())));
         sidebar.getChildren().add(crearSidebarSpacer());
         sidebar.getChildren().add(crearNavButton("Salir", () -> root.setCenter(crearLogin())));
@@ -265,8 +268,10 @@ public class HotelApp extends Application {
         VBox sidebar = crearSidebarBase();
         sidebar.getChildren().addAll(
                 crearMarca(),
-                crearNavButton("Reservar estadia", () -> root.setCenter(crearShellCliente("Reservar estadia", crearVistaClienteReserva()))),
+                crearNavButton("Disponibilidad", () -> root.setCenter(crearShellCliente("Disponibilidad", crearVistaDisponibilidadCliente()))),
+                crearNavButton("Crear reserva", () -> root.setCenter(crearShellCliente("Crear reserva", crearVistaClienteReserva()))),
                 crearNavButton("Mis reservas", () -> root.setCenter(crearShellCliente("Mis reservas", crearVistaClienteReservas()))),
+                crearNavButton("Mi perfil", () -> root.setCenter(crearShellCliente("Mi perfil", crearVistaPerfilCliente()))),
                 crearSidebarSpacer(),
                 crearNavButton("Salir", () -> root.setCenter(crearLogin()))
         );
@@ -338,12 +343,10 @@ public class HotelApp extends Application {
 
         HBox acciones = new HBox(12);
         if (usuarioInternoActual == admin || usuarioInternoActual == recepcionista) {
-            acciones.getChildren().add(crearQuickAction("Nueva reserva", () -> mostrarModuloInterno("Reservas", crearVistaReservasAdmin())));
+            acciones.getChildren().add(crearQuickAction("Nueva reserva", () -> mostrarModuloInterno("Crear reserva", crearVistaCrearReservaInterna())));
             acciones.getChildren().add(crearQuickAction("Check-in", () -> mostrarModuloInterno("Check-in / Check-out", crearVistaEstadiasAdmin())));
         }
-        if (usuarioInternoActual == admin || usuarioInternoActual == administrativo) {
-            acciones.getChildren().add(crearQuickAction("Reportes", () -> mostrarModuloInterno("Reportes", crearVistaReportes())));
-        }
+        acciones.getChildren().add(crearQuickAction("Reportes", () -> mostrarModuloInterno("Reportes", crearVistaReportes())));
         acciones.getStyleClass().add("quick-actions");
 
         BorderPane resumen = new BorderPane();
@@ -388,49 +391,19 @@ public class HotelApp extends Application {
     }
 
     private BorderPane crearVistaHabitacionesAdmin() {
-        tablaHabitacionesAdmin = crearTablaHabitaciones(habitaciones);
-
-        TextField numero = new TextField();
-        numero.setPromptText("Ej: 101");
-        ComboBox<TipoHabitacion> tipo = new ComboBox<>(FXCollections.observableArrayList(TipoHabitacion.values()));
-        tipo.setValue(TipoHabitacion.SIMPLE);
-
-        Button crear = new Button("Crear habitacion");
-        crear.getStyleClass().add("button-primary");
-        crear.setOnAction(e -> crearHabitacion(numero, tipo));
-
-        ComboBox<EstadoHabitacion> estado = new ComboBox<>(FXCollections.observableArrayList(EstadoHabitacion.values()));
-        estado.setValue(EstadoHabitacion.DISPONIBLE);
-        Button cambiarEstado = new Button("Cambiar estado");
-        cambiarEstado.getStyleClass().add("button-secondary");
-        cambiarEstado.setOnAction(e -> cambiarEstadoHabitacion(estado));
-
-        Label numeroLabel = new Label("Numero:");
-        Label tipoLabel = new Label("Tipo:");
-        boolean puedeCrear = usuarioInternoActual == admin;
-        for (Region control : new Region[]{numeroLabel, numero, tipoLabel, tipo, crear}) {
-            control.setVisible(puedeCrear);
-            control.setManaged(puedeCrear);
-        }
-
-        GridPane form = crearGrid();
-        form.add(numeroLabel, 0, 0);
-        form.add(numero, 1, 0);
-        form.add(tipoLabel, 2, 0);
-        form.add(tipo, 3, 0);
-        form.add(crear, 4, 0);
-        form.add(new Label("Nuevo estado:"), 0, 1);
-        form.add(estado, 1, 1);
-        form.add(cambiarEstado, 2, 1);
-        form.getStyleClass().add("toolbar-card");
-
+        actualizarHabitacionesDisponiblesInterno();
+        tablaHabitacionesAdmin = crearTablaHabitaciones(habitacionesDisponiblesInterno);
+        Label ayuda = new Label("Se muestran únicamente las habitaciones con estado DISPONIBLE.");
+        ayuda.getStyleClass().add("section-help");
+        VBox top = new VBox(ayuda);
+        top.getStyleClass().add("toolbar-card");
         BorderPane pane = new BorderPane(tablaHabitacionesAdmin);
-        pane.setTop(form);
+        pane.setTop(top);
         pane.getStyleClass().add("content-pane");
         return pane;
     }
 
-    private BorderPane crearVistaReservasAdmin() {
+    private BorderPane crearVistaCrearReservaInterna() {
         tablaReservasAdmin = crearTablaReservas(reservas);
 
         TextField nombre = new TextField();
@@ -441,32 +414,13 @@ public class HotelApp extends Application {
         telefono.setPromptText("Telefono");
         ComboBox<TipoHabitacion> tipo = new ComboBox<>(FXCollections.observableArrayList(TipoHabitacion.values()));
         tipo.setValue(TipoHabitacion.SIMPLE);
+        TextField capacidad = new TextField("1");
+        capacidad.setPromptText("Cantidad");
         DatePicker ingreso = new DatePicker(LocalDate.now().plusDays(1));
         DatePicker egreso = new DatePicker(LocalDate.now().plusDays(2));
-        ComboBox<String> descuento = new ComboBox<>(FXCollections.observableArrayList(
-                "Sin descuento", "Temporada (15%)", "Cliente frecuente (10%)"));
-        descuento.setValue("Sin descuento");
-
         Button crear = new Button("Crear reserva");
         crear.getStyleClass().add("button-primary");
-        crear.setOnAction(e -> crearReserva(nombre, email, telefono, tipo, ingreso, egreso, false));
-        Button confirmar = new Button("Confirmar reserva");
-        confirmar.getStyleClass().add("button-secondary");
-        confirmar.setOnAction(e -> cambiarEstadoReserva(true, descuento.getValue()));
-        Button cancelar = new Button("Cancelar reserva");
-        cancelar.getStyleClass().add("button-danger");
-        cancelar.setOnAction(e -> cambiarEstadoReserva(false, null));
-
-        Label descuentoLabel = new Label("Descuento al confirmar:");
-        boolean puedeConfirmar = usuarioInternoActual == admin || usuarioInternoActual == recepcionista;
-        descuentoLabel.setVisible(puedeConfirmar);
-        descuentoLabel.setManaged(puedeConfirmar);
-        descuento.setVisible(puedeConfirmar);
-        descuento.setManaged(puedeConfirmar);
-        crear.setVisible(puedeConfirmar);
-        crear.setManaged(puedeConfirmar);
-        confirmar.setVisible(puedeConfirmar);
-        confirmar.setManaged(puedeConfirmar);
+        crear.setOnAction(e -> crearReserva(nombre, email, telefono, tipo, capacidad, ingreso, egreso, false));
 
         GridPane form = crearGrid();
         form.add(new Label("Huesped:"), 0, 0);
@@ -481,15 +435,44 @@ public class HotelApp extends Application {
         form.add(ingreso, 3, 1);
         form.add(new Label("Egreso:"), 4, 1);
         form.add(egreso, 5, 1);
-        form.add(descuentoLabel, 0, 2);
-        form.add(descuento, 1, 2);
-        form.add(crear, 3, 2);
-        form.add(confirmar, 4, 2);
-        form.add(cancelar, 5, 2);
+        form.add(new Label("Huespedes:"), 0, 2);
+        form.add(capacidad, 1, 2);
+        form.add(crear, 3, 3);
         form.getStyleClass().add("toolbar-card");
 
         BorderPane pane = new BorderPane(tablaReservasAdmin);
         pane.setTop(form);
+        pane.getStyleClass().add("content-pane");
+        return pane;
+    }
+
+    private BorderPane crearVistaGestionReservas() {
+        tablaReservasAdmin = crearTablaReservas(reservas);
+
+        ComboBox<String> descuento = new ComboBox<>(FXCollections.observableArrayList(
+                "Sin descuento", "Temporada (15%)", "Cliente frecuente (10%)"));
+        descuento.setValue("Sin descuento");
+
+        Button confirmar = new Button("Confirmar seleccionada");
+        confirmar.getStyleClass().add("button-secondary");
+        confirmar.setOnAction(e -> cambiarEstadoReserva(true, descuento.getValue()));
+        Button cancelar = new Button("Cancelar seleccionada");
+        cancelar.getStyleClass().add("button-danger");
+        cancelar.setOnAction(e -> cambiarEstadoReserva(false, null));
+
+        boolean puedeGestionar = usuarioInternoActual == admin || usuarioInternoActual == recepcionista;
+        HBox acciones = new HBox(10);
+        acciones.setAlignment(Pos.CENTER_LEFT);
+        if (puedeGestionar) {
+            acciones.getChildren().addAll(
+                    new Label("Descuento al confirmar:"), descuento, confirmar, cancelar);
+        } else {
+            acciones.getChildren().add(new Label("Vista de consulta. Tu rol no puede confirmar ni cancelar reservas."));
+        }
+        acciones.getStyleClass().add("toolbar-card");
+
+        BorderPane pane = new BorderPane(tablaReservasAdmin);
+        pane.setTop(acciones);
         pane.getStyleClass().add("content-pane");
         return pane;
     }
@@ -505,25 +488,42 @@ public class HotelApp extends Application {
         tablaEstadias.getColumns().add(columnaTexto("Servicios", Estadia::getDescripcionServicios, 420));
         tablaEstadias.getColumns().add(columnaTexto("Total", e -> "$" + e.getCostoTotal(), 100));
 
-        CheckBox desayuno = new CheckBox("Desayuno");
-        CheckBox spa = new CheckBox("Spa");
-        CheckBox estacionamiento = new CheckBox("Estacionamiento");
+        reservaCheckInCombo = new ComboBox<>();
+        reservaCheckInCombo.setPromptText("Reserva confirmada");
+        reservaCheckInCombo.setItems(FXCollections.observableArrayList(
+                reservas.stream()
+                        .filter(r -> "CONFIRMADA".equals(r.getEstadoNombre()))
+                        .map(Reserva::getId)
+                        .toList()));
+
+        ComboBox<String> metodoPago = new ComboBox<>(FXCollections.observableArrayList(
+                "Efectivo", "Tarjeta", "Transferencia"));
+        metodoPago.setValue("Efectivo");
+
+        ComboBox<TipoAmenity> amenity = new ComboBox<>(FXCollections.observableArrayList(TipoAmenity.values()));
+        amenity.setValue(TipoAmenity.DESAYUNO);
 
         Button checkIn = new Button("Check-in reserva seleccionada");
         checkIn.getStyleClass().add("button-primary");
         checkIn.setOnAction(e -> realizarCheckIn());
-        Button agregarServicios = new Button("Agregar servicios");
-        agregarServicios.getStyleClass().add("button-secondary");
-        agregarServicios.setOnAction(e -> agregarServicios(desayuno.isSelected(), spa.isSelected(), estacionamiento.isSelected()));
+        Button agregarServicio = new Button("Agregar amenity");
+        agregarServicio.getStyleClass().add("button-secondary");
+        agregarServicio.setOnAction(e -> modificarAmenity(amenity.getValue(), true));
+        Button quitarServicio = new Button("Quitar amenity");
+        quitarServicio.getStyleClass().add("button-danger");
+        quitarServicio.setOnAction(e -> modificarAmenity(amenity.getValue(), false));
         Button checkOut = new Button("Check-out");
         checkOut.getStyleClass().add("button-danger");
-        checkOut.setOnAction(e -> realizarCheckOut());
+        checkOut.setOnAction(e -> realizarCheckOut(metodoPago.getValue()));
 
-        HBox acciones = new HBox(10, checkIn, desayuno, spa, estacionamiento, agregarServicios, checkOut);
+        FlowPane acciones = new FlowPane(10, 10,
+                new Label("Reserva:"), reservaCheckInCombo, checkIn,
+                new Label("Amenity:"), amenity, agregarServicio, quitarServicio,
+                new Label("Metodo de pago:"), metodoPago, checkOut);
         acciones.setAlignment(Pos.CENTER_LEFT);
         acciones.getStyleClass().add("action-row");
 
-        Label ayuda = new Label("Para check-in, selecciona una reserva confirmada en la pestana Reservas. Para servicios/check-out, selecciona una estadia aca.");
+        Label ayuda = new Label("Selecciona una reserva confirmada para check-in. Para agregar/quitar amenities o hacer check-out, selecciona una estadia de la tabla.");
         ayuda.getStyleClass().add("section-help");
         ayuda.setWrapText(true);
 
@@ -559,27 +559,38 @@ public class HotelApp extends Application {
     }
 
     private BorderPane crearVistaReportes() {
-        VBox metricas = new VBox(10);
-        metricas.getStyleClass().add("toolbar-card");
-        metricas.getChildren().addAll(
-                new Label("Habitaciones totales: " + habitaciones.size()),
-                new Label("Disponibles: " + contarHabitaciones(EstadoHabitacion.DISPONIBLE)),
-                new Label("Reservadas: " + contarHabitaciones(EstadoHabitacion.RESERVADA)),
-                new Label("Ocupadas: " + contarHabitaciones(EstadoHabitacion.OCUPADA)),
-                new Label("Ocupacion actual: " + calcularOcupacion() + "%"),
-                new Label("Reservas activas: " + contarReservasActivas()),
-                new Label("Pagos registrados: " + pagos.size()),
-                new Label("Ingresos simulados: $" + totalPagos())
-        );
+        refrescarTablas();
+        GridPane metricas = crearGrid();
+        metricas.getStyleClass().add("report-grid");
+        agregarMetricaReporte(metricas, 0, "Habitaciones totales", String.valueOf(habitaciones.size()));
+        agregarMetricaReporte(metricas, 1, "Disponibles", String.valueOf(contarHabitaciones(EstadoHabitacion.DISPONIBLE)));
+        agregarMetricaReporte(metricas, 2, "Reservadas", String.valueOf(contarHabitaciones(EstadoHabitacion.RESERVADA)));
+        agregarMetricaReporte(metricas, 3, "Ocupadas", String.valueOf(contarHabitaciones(EstadoHabitacion.OCUPADA)));
+        agregarMetricaReporte(metricas, 4, "Ocupacion actual", calcularOcupacion() + "%");
+        agregarMetricaReporte(metricas, 5, "Reservas activas", String.valueOf(contarReservasActivas()));
+        agregarMetricaReporte(metricas, 6, "Estadias registradas", String.valueOf(estadias.size()));
+        agregarMetricaReporte(metricas, 7, "Amenity mas utilizado", amenityMasUtilizado());
+        agregarMetricaReporte(metricas, 8, "Pagos registrados", String.valueOf(pagosPorReserva.size()));
+        agregarMetricaReporte(metricas, 9, "Ingresos simulados", "$" + totalPagos());
 
         Button actualizar = new Button("Actualizar reporte");
         actualizar.getStyleClass().add("button-secondary");
-        actualizar.setOnAction(e -> mostrarModoAdministrador());
-        metricas.getChildren().add(actualizar);
+        actualizar.setOnAction(e -> mostrarModuloInterno("Reportes", crearVistaReportes()));
 
-        BorderPane pane = new BorderPane(metricas);
+        VBox contenido = new VBox(18, metricas, actualizar);
+        contenido.getStyleClass().add("toolbar-card");
+        BorderPane pane = new BorderPane(contenido);
         pane.getStyleClass().add("content-pane");
         return pane;
+    }
+
+    private void agregarMetricaReporte(GridPane grid, int fila, String nombre, String valor) {
+        Label nombreLabel = new Label(nombre + ":");
+        nombreLabel.getStyleClass().add("report-label");
+        Label valorLabel = new Label(valor);
+        valorLabel.getStyleClass().add("report-value");
+        grid.add(nombreLabel, 0, fila);
+        grid.add(valorLabel, 1, fila);
     }
 
     private BorderPane crearVistaPagos() {
@@ -587,7 +598,9 @@ public class HotelApp extends Application {
         tablaPagos.getStyleClass().add("data-table");
         tablaPagos.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         tablaPagos.getColumns().add(columna("ID", "id", 70));
-        tablaPagos.getColumns().add(columnaTexto("Monto", p -> "$" + p.getMonto(), 120));
+        tablaPagos.getColumns().add(columnaTexto("Reserva", p -> idReservaPorPago(p), 90));
+        tablaPagos.getColumns().add(columnaTexto("Cliente", p -> clientePorPago(p), 180));
+        tablaPagos.getColumns().add(columnaTexto("Total final", p -> "$" + totalFinalPorPago(p), 120));
         tablaPagos.getColumns().add(columnaTexto("Fecha", p -> p.getFecha().toString(), 140));
         tablaPagos.getColumns().add(columna("Metodo", "metodoPago", 160));
         tablaPagos.getColumns().add(columnaTexto("Comprobante", Pago::generarComprobante, 500));
@@ -618,10 +631,13 @@ public class HotelApp extends Application {
         telefono.setPromptText("Telefono");
         ComboBox<TipoHabitacion> tipo = new ComboBox<>(FXCollections.observableArrayList(TipoHabitacion.values()));
         tipo.setValue(TipoHabitacion.SIMPLE);
+        TextField capacidad = new TextField("1");
+        capacidad.setPromptText("Cantidad de huespedes");
         DatePicker ingreso = new DatePicker(LocalDate.now().plusDays(1));
         DatePicker egreso = new DatePicker(LocalDate.now().plusDays(2));
         emailClienteFiltro = email;
         tipoClienteFiltro = tipo;
+        capacidadClienteFiltro = capacidad;
         ingresoClienteFiltro = ingreso;
         egresoClienteFiltro = egreso;
 
@@ -630,7 +646,7 @@ public class HotelApp extends Application {
         buscar.setOnAction(e -> filtrarDisponibilidadCliente());
         Button reservar = new Button("Reservar");
         reservar.getStyleClass().add("button-primary");
-        reservar.setOnAction(e -> crearReservaCliente(nombre, email, telefono, tipo, ingreso, egreso));
+        reservar.setOnAction(e -> crearReservaCliente(nombre, email, telefono, tipo, capacidad, ingreso, egreso));
         GridPane form = crearGrid();
         form.add(new Label("Nombre:"), 0, 0);
         form.add(nombre, 1, 0);
@@ -644,11 +660,13 @@ public class HotelApp extends Application {
         form.add(ingreso, 3, 1);
         form.add(new Label("Egreso:"), 4, 1);
         form.add(egreso, 5, 1);
+        form.add(new Label("Huespedes:"), 0, 2);
+        form.add(capacidad, 1, 2);
         form.add(buscar, 3, 2);
         form.add(reservar, 4, 2);
         form.getStyleClass().add("toolbar-card");
 
-        Label disponibles = new Label("Habitaciones disponibles");
+        Label disponibles = new Label("Habitaciones disponibles - selecciona una para reservar");
         disponibles.getStyleClass().add("section-title");
 
         VBox centro = new VBox(10, disponibles, tablaHabitacionesCliente);
@@ -661,51 +679,44 @@ public class HotelApp extends Application {
         return pane;
     }
 
+    private BorderPane crearVistaDisponibilidadCliente() {
+        habitacionesCliente.setAll(habitacionGestor.getHabitaciones().stream()
+                .filter(Habitacion::estaDisponible)
+                .toList());
+        tablaHabitacionesCliente = crearTablaHabitaciones(habitacionesCliente);
+
+        Label ayuda = new Label("Estas son todas las habitaciones disponibles actualmente. Para buscar por fechas, tipo y capacidad usa Crear reserva.");
+        ayuda.getStyleClass().add("section-help");
+        ayuda.setWrapText(true);
+
+        BorderPane pane = new BorderPane(tablaHabitacionesCliente);
+        VBox top = new VBox(ayuda);
+        top.getStyleClass().add("toolbar-card");
+        pane.setTop(top);
+        pane.getStyleClass().add("content-pane");
+        return pane;
+    }
+
     private BorderPane crearVistaClienteReservas() {
         tablaReservasCliente = crearTablaReservas(reservasCliente);
 
-        TextField nombre = new TextField();
-        nombre.setPromptText("Nombre completo");
         TextField email = new TextField();
         email.setPromptText("Email para ver tus reservas");
         email.setText(emailClienteActual);
-        TextField telefono = new TextField();
-        telefono.setPromptText("Telefono");
-        ComboBox<TipoHabitacion> tipo = new ComboBox<>(FXCollections.observableArrayList(TipoHabitacion.values()));
-        tipo.setValue(TipoHabitacion.SIMPLE);
-        DatePicker ingreso = new DatePicker(LocalDate.now().plusDays(1));
-        DatePicker egreso = new DatePicker(LocalDate.now().plusDays(2));
         emailClienteFiltro = email;
-        tipoClienteFiltro = tipo;
-        ingresoClienteFiltro = ingreso;
-        egresoClienteFiltro = egreso;
 
         Button ver = new Button("Actualizar mis reservas");
         ver.getStyleClass().add("button-secondary");
         ver.setOnAction(e -> filtrarReservasCliente());
-        Button modificar = new Button("Modificar seleccionada");
-        modificar.getStyleClass().add("button-secondary");
-        modificar.setOnAction(e -> modificarReservaCliente(nombre, email, telefono, tipo, ingreso, egreso));
         Button cancelar = new Button("Cancelar seleccionada");
         cancelar.getStyleClass().add("button-danger");
         cancelar.setOnAction(e -> cancelarReservaCliente(email));
 
         GridPane form = crearGrid();
-        form.add(new Label("Nombre:"), 0, 0);
-        form.add(nombre, 1, 0);
-        form.add(new Label("Email:"), 2, 0);
-        form.add(email, 3, 0);
-        form.add(new Label("Telefono:"), 4, 0);
-        form.add(telefono, 5, 0);
-        form.add(new Label("Tipo:"), 0, 1);
-        form.add(tipo, 1, 1);
-        form.add(new Label("Ingreso:"), 2, 1);
-        form.add(ingreso, 3, 1);
-        form.add(new Label("Egreso:"), 4, 1);
-        form.add(egreso, 5, 1);
-        form.add(ver, 3, 2);
-        form.add(modificar, 4, 2);
-        form.add(cancelar, 5, 2);
+        form.add(new Label("Email:"), 0, 0);
+        form.add(email, 1, 0);
+        form.add(ver, 2, 0);
+        form.add(cancelar, 3, 0);
         form.getStyleClass().add("toolbar-card");
 
         Label propias = new Label("Mis reservas");
@@ -719,6 +730,26 @@ public class HotelApp extends Application {
         pane.setTop(form);
         pane.getStyleClass().add("content-pane");
         filtrarReservasCliente();
+        return pane;
+    }
+
+    private BorderPane crearVistaPerfilCliente() {
+        Huesped huesped = buscarHuespedPorEmail(emailClienteActual);
+        long cantidadReservas = reservas.stream()
+                .filter(r -> r.getHuesped().getEmail().equalsIgnoreCase(emailClienteActual))
+                .count();
+
+        VBox perfil = new VBox(12);
+        perfil.getStyleClass().add("toolbar-card");
+        perfil.getChildren().addAll(
+                crearLabelConClase(huesped == null ? nombreDesdeEmail(emailClienteActual) : huesped.getNombre(), "panel-title"),
+                new Label("Email: " + emailClienteActual),
+                new Label("Telefono: " + (huesped == null ? "Sin telefono" : huesped.getTelefono())),
+                new Label("Reservas registradas: " + cantidadReservas)
+        );
+
+        BorderPane pane = new BorderPane(perfil);
+        pane.getStyleClass().add("content-pane");
         return pane;
     }
 
@@ -746,7 +777,11 @@ public class HotelApp extends Application {
         tabla.getColumns().add(columnaTexto("Ingreso", r -> r.getFechaIngreso().toString(), 110));
         tabla.getColumns().add(columnaTexto("Egreso", r -> r.getFechaEgreso().toString(), 110));
         tabla.getColumns().add(columnaTexto("Estado", Reserva::getEstadoNombre, 120));
-        tabla.getColumns().add(columnaTexto("Costo", r -> "$" + r.calcularCostoTotal(), 100));
+        tabla.getColumns().add(columnaTexto("Habitacion c/desc.", r -> "$" + r.calcularCostoTotal(), 125));
+        tabla.getColumns().add(columnaTexto("Amenities", this::obtenerDescripcionAmenities, 190));
+        tabla.getColumns().add(columnaTexto("Extra", r -> "$" + calcularCostoAmenities(r), 90));
+        tabla.getColumns().add(columnaTexto("Total actualizado", r -> "$" + calcularTotalActualReserva(r), 125));
+        tabla.getColumns().add(columnaTexto("Pago", r -> pagosPorReserva.containsKey(r.getId()) ? "REGISTRADO" : "PENDIENTE", 105));
         return tabla;
     }
 
@@ -785,7 +820,7 @@ public class HotelApp extends Application {
         try {
             int numero = Integer.parseInt(numeroField.getText().trim());
             HabitacionFactory factory = factoryPorTipo(tipoCombo.getValue());
-            habitacionGestor.crearHabitacion(usuarioInternoActual, numero, factory);
+            habitacionGestor.crearHabitacion(admin, numero, factory);
             numeroField.clear();
             refrescarTablas();
             log("Habitacion creada correctamente.");
@@ -806,23 +841,36 @@ public class HotelApp extends Application {
     }
 
     private void crearReservaCliente(TextField nombre, TextField email, TextField telefono,
-                                     ComboBox<TipoHabitacion> tipo, DatePicker ingreso,
+                                     ComboBox<TipoHabitacion> tipo, TextField capacidad, DatePicker ingreso,
                                      DatePicker egreso) {
-        crearReserva(nombre, email, telefono, tipo, ingreso, egreso, true);
+        crearReserva(nombre, email, telefono, tipo, capacidad, ingreso, egreso, true);
     }
 
     private void crearReserva(TextField nombre, TextField email, TextField telefono,
-                              ComboBox<TipoHabitacion> tipo, DatePicker ingreso,
+                              ComboBox<TipoHabitacion> tipo, TextField capacidad, DatePicker ingreso,
                               DatePicker egreso, boolean desdeCliente) {
         try {
             validarFechas(ingreso.getValue(), egreso.getValue());
-            Habitacion disponible = habitacionGestor.consultarDisponibilidad(ingreso.getValue(), egreso.getValue(), tipo.getValue())
-                    .stream()
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalStateException("No hay habitaciones disponibles para ese tipo."));
+            int cantidadHuespedes = Integer.parseInt(valor(capacidad, "0"));
+            List<Habitacion> disponibles = habitacionGestor.consultarDisponibilidad(
+                    ingreso.getValue(), egreso.getValue(), tipo.getValue(), cantidadHuespedes,
+                    reservaGestor.getReservas());
+            Habitacion disponible;
+            if (desdeCliente) {
+                disponible = tablaHabitacionesCliente == null
+                        ? null
+                        : tablaHabitacionesCliente.getSelectionModel().getSelectedItem();
+                if (disponible == null || !disponibles.contains(disponible)) {
+                    throw new IllegalStateException("Busca y selecciona una habitacion disponible de la tabla.");
+                }
+            } else {
+                disponible = disponibles.stream()
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalStateException("No hay habitaciones disponibles para esos filtros."));
+            }
 
             Huesped huesped = buscarOCrearHuesped(valor(nombre, "Sin nombre"), valor(email, "sin@email.com"), valor(telefono, "Sin telefono"));
-            UsuarioInterno creador = desdeCliente ? recepcionista : usuarioInternoActual;
+            UsuarioInterno creador = desdeCliente ? huesped : usuarioInternoActual;
             Reserva reserva = reservaGestor.crearReserva(creador, huesped, disponible, ingreso.getValue(), egreso.getValue());
             reserva.agregarObservador(new NotificacionEmailObserver(huesped.getEmail()));
             reserva.agregarObservador(new NotificacionSMSObserver(huesped.getTelefono()));
@@ -924,63 +972,81 @@ public class HotelApp extends Application {
     }
 
     private void realizarCheckIn() {
-        Reserva reserva = tablaReservasAdmin.getSelectionModel().getSelectedItem();
+        Integer reservaId = reservaCheckInCombo == null ? null : reservaCheckInCombo.getValue();
+        Reserva reserva = reservaId == null ? null : buscarReserva(reservaId);
         if (reserva == null) {
-            mostrarAlerta("Selecciona una reserva confirmada en la pestana Reservas.");
+            mostrarAlerta("Selecciona una reserva confirmada para realizar el check-in.");
             return;
         }
         try {
-            estadiaGestor.realizarCheckIn(usuarioInternoActual, reserva);
+            Estadia estadia = estadiaGestor.realizarCheckIn(usuarioInternoActual, reserva);
             refrescarTablas();
-            log("Check-in realizado para la reserva #" + reserva.getId());
+            mostrarAlerta("Check-in realizado para la reserva #" + reserva.getId()
+                    + "\nAhora puedes agregar o quitar amenities desde esta pantalla."
+                    + "\nTotal actualizado: $" + calcularTotalActualReserva(reserva));
         } catch (Exception ex) {
             mostrarError("No se pudo realizar el check-in", ex);
         }
     }
 
-    private void agregarServicios(boolean desayuno, boolean spa, boolean estacionamiento) {
+    private void modificarAmenity(TipoAmenity amenity, boolean agregar) {
         Estadia estadia = tablaEstadias.getSelectionModel().getSelectedItem();
         if (estadia == null) {
             mostrarAlerta("Selecciona una estadia de la tabla.");
             return;
         }
         try {
-            int noches = (int) ChronoUnit.DAYS.between(estadia.getReserva().getFechaIngreso(), estadia.getReserva().getFechaEgreso());
-            ComponenteEstadia componente = new EstadiaBase(estadia.getReserva().getHabitacion(), noches);
-            if (desayuno) componente = new DesayunoDecorator(componente);
-            if (spa) componente = new SpaDecorator(componente);
-            if (estacionamiento) componente = new EstacionamientoDecorator(componente);
-            estadiaGestor.agregarServicio(usuarioInternoActual, estadia, componente);
+            boolean cambio = agregar
+                    ? estadiaGestor.agregarAmenity(usuarioInternoActual, estadia, amenity)
+                    : estadiaGestor.quitarAmenity(usuarioInternoActual, estadia, amenity);
+            if (!cambio) {
+                mostrarAlerta(agregar
+                        ? amenity.getNombre() + " ya esta agregado."
+                        : amenity.getNombre() + " no esta agregado.");
+                return;
+            }
             refrescarTablas();
-            log("Servicios actualizados. Total: $" + estadia.getCostoTotal());
+            mostrarAlerta(amenity.getNombre() + (agregar ? " agregado." : " quitado.")
+                    + "\n" + obtenerDescripcionAmenities(estadia.getReserva())
+                    + "\nExtra amenities: $" + calcularCostoAmenities(estadia.getReserva())
+                    + "\nTotal actualizado: $" + calcularTotalActualReserva(estadia.getReserva()));
         } catch (Exception ex) {
-            mostrarError("No se pudieron agregar los servicios", ex);
+            mostrarError("No se pudo modificar el amenity", ex);
         }
     }
 
-    private void realizarCheckOut() {
+    private void realizarCheckOut(String metodoPago) {
         Estadia estadia = tablaEstadias.getSelectionModel().getSelectedItem();
         if (estadia == null) {
             mostrarAlerta("Selecciona una estadia de la tabla.");
             return;
         }
         try {
-            Pago pago = estadiaGestor.realizarCheckOut(usuarioInternoActual, estadia, pagos.size() + 1, "tarjeta");
+            Reserva reserva = estadia.getReserva();
+            double totalFinal = calcularTotalActualReserva(reserva);
+            Pago pago = estadiaGestor.realizarCheckOut(usuarioInternoActual, estadia, pagos.size() + 1, metodoPago.toLowerCase(Locale.ROOT));
+            pagosPorReserva.put(reserva.getId(), pago);
+            totalesFinalesPorReserva.put(reserva.getId(), totalFinal);
             refrescarTablas();
-            log("Check-out realizado. Monto final: $" + pago.getMonto());
+            filtrarReservasCliente();
+            mostrarComprobanteCheckOut(reserva, pago, totalFinal);
         } catch (Exception ex) {
             mostrarError("No se pudo realizar el check-out", ex);
         }
     }
 
     private void filtrarDisponibilidadCliente() {
-        if (tipoClienteFiltro == null || ingresoClienteFiltro == null || egresoClienteFiltro == null) return;
+        if (tipoClienteFiltro == null || capacidadClienteFiltro == null
+                || ingresoClienteFiltro == null || egresoClienteFiltro == null) return;
         try {
             validarFechas(ingresoClienteFiltro.getValue(), egresoClienteFiltro.getValue());
+            int capacidad = Integer.parseInt(valor(capacidadClienteFiltro, "0"));
             habitacionesCliente.setAll(habitacionGestor.consultarDisponibilidad(
                     ingresoClienteFiltro.getValue(),
                     egresoClienteFiltro.getValue(),
-                    tipoClienteFiltro.getValue()
+                    tipoClienteFiltro.getValue(),
+                    capacidad,
+                    reservaGestor.getReservas()
             ));
             if (tablaHabitacionesCliente != null) tablaHabitacionesCliente.refresh();
         } catch (Exception ex) {
@@ -1001,8 +1067,92 @@ public class HotelApp extends Application {
         if (tablaReservasCliente != null) tablaReservasCliente.refresh();
     }
 
+    private double calcularCostoBaseSinDescuento(Reserva reserva) {
+        long noches = ChronoUnit.DAYS.between(reserva.getFechaIngreso(), reserva.getFechaEgreso());
+        return noches * reserva.getHabitacion().getPrecioPorNoche();
+    }
+
+    private double calcularCostoAmenities(Reserva reserva) {
+        Estadia estadia = buscarEstadia(reserva.getId());
+        if (estadia == null) return 0;
+        return Math.max(0, estadia.getCostoTotal() - calcularCostoBaseSinDescuento(reserva));
+    }
+
+    private double calcularTotalActualReserva(Reserva reserva) {
+        if (totalesFinalesPorReserva.containsKey(reserva.getId())) {
+            return totalesFinalesPorReserva.get(reserva.getId());
+        }
+        return reserva.calcularCostoTotal() + calcularCostoAmenities(reserva);
+    }
+
+    private String obtenerDescripcionAmenities(Reserva reserva) {
+        Estadia estadia = buscarEstadia(reserva.getId());
+        if (estadia == null || estadia.getDescripcionServicios() == null || estadia.getDescripcionServicios().isBlank()) {
+            return "Sin amenities cargados";
+        }
+        return estadia.getDescripcionServicios();
+    }
+
+    private Estadia buscarEstadia(int reservaId) {
+        for (Estadia estadia : estadiaGestor.getEstadias()) {
+            if (estadia.getReserva().getId() == reservaId) return estadia;
+        }
+        return null;
+    }
+
+    private Reserva buscarReserva(int reservaId) {
+        for (Reserva reserva : reservaGestor.getReservas()) {
+            if (reserva.getId() == reservaId) return reserva;
+        }
+        return null;
+    }
+
+    private Huesped buscarHuespedPorEmail(String email) {
+        for (Huesped huesped : huespedes) {
+            if (huesped.getEmail().equalsIgnoreCase(email)) return huesped;
+        }
+        return null;
+    }
+
+    private String nombreDesdeEmail(String email) {
+        int arroba = email.indexOf('@');
+        return arroba > 0 ? email.substring(0, arroba) : email;
+    }
+
+    private String idReservaPorPago(Pago pago) {
+        for (Map.Entry<Integer, Pago> entry : pagosPorReserva.entrySet()) {
+            if (entry.getValue() == pago) return String.valueOf(entry.getKey());
+        }
+        return "-";
+    }
+
+    private String clientePorPago(Pago pago) {
+        String id = idReservaPorPago(pago);
+        if ("-".equals(id)) return "Sin datos";
+        Reserva reserva = buscarReserva(Integer.parseInt(id));
+        return reserva == null ? "Sin datos" : reserva.getHuesped().getNombre();
+    }
+
+    private double totalFinalPorPago(Pago pago) {
+        String id = idReservaPorPago(pago);
+        if ("-".equals(id)) return pago.getMonto();
+        return totalesFinalesPorReserva.getOrDefault(Integer.parseInt(id), pago.getMonto());
+    }
+
+    private void mostrarComprobanteCheckOut(Reserva reserva, Pago pago, double totalFinal) {
+        String mensaje = "Reserva #" + reserva.getId() + " finalizada."
+                + "\nTotal habitacion con descuento: $" + reserva.calcularCostoTotal()
+                + "\nCargo extra por amenities: $" + calcularCostoAmenities(reserva)
+                + "\nTotal final: $" + totalFinal
+                + "\n\n" + pago.generarComprobante();
+        Alert alert = new Alert(Alert.AlertType.INFORMATION, mensaje, ButtonType.OK);
+        alert.setHeaderText("Check-out realizado");
+        alert.showAndWait();
+    }
+
     private void refrescarTablas() {
         habitaciones.setAll(habitacionGestor.getHabitaciones());
+        actualizarHabitacionesDisponiblesInterno();
         reservas.setAll(reservaGestor.getReservas());
         estadias.setAll(estadiaGestor.getEstadias());
         pagos.setAll(estadiaGestor.getPagos());
@@ -1011,6 +1161,19 @@ public class HotelApp extends Application {
         if (tablaEstadias != null) tablaEstadias.refresh();
         if (tablaHuespedes != null) tablaHuespedes.refresh();
         if (tablaPagos != null) tablaPagos.refresh();
+        if (reservaCheckInCombo != null) {
+            reservaCheckInCombo.setItems(FXCollections.observableArrayList(
+                    reservas.stream()
+                            .filter(r -> "CONFIRMADA".equals(r.getEstadoNombre()))
+                            .map(Reserva::getId)
+                            .toList()));
+        }
+    }
+
+    private void actualizarHabitacionesDisponiblesInterno() {
+        habitacionesDisponiblesInterno.setAll(habitacionGestor.getHabitaciones().stream()
+                .filter(Habitacion::estaDisponible)
+                .toList());
     }
 
     private UsuarioInterno buscarUsuarioInterno(String usuario, String clave) {
@@ -1068,7 +1231,20 @@ public class HotelApp extends Application {
     }
 
     private double totalPagos() {
-        return pagos.stream().mapToDouble(Pago::getMonto).sum();
+        return totalesFinalesPorReserva.values().stream().mapToDouble(Double::doubleValue).sum();
+    }
+
+    private String amenityMasUtilizado() {
+        Map<TipoAmenity, Integer> usos = new HashMap<>();
+        for (Estadia estadia : estadias) {
+            for (TipoAmenity amenity : estadia.getAmenities()) {
+                usos.merge(amenity, 1, Integer::sum);
+            }
+        }
+        return usos.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(e -> e.getKey().getNombre() + " (" + e.getValue() + ")")
+                .orElse("Sin amenities registrados");
     }
 
     private HabitacionFactory factoryPorTipo(TipoHabitacion tipo) {

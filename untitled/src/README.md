@@ -54,8 +54,8 @@ La aplicacion contempla distintos tipos de usuarios:
 2. Abrir el proyecto en un entorno de desarrollo compatible con Java (IntelliJ IDEA, Eclipse o Visual Studio Code).
 3. Verificar que el proyecto tenga configurado el JDK correspondiente y la librería de JavaFX para la interfaz gráfica.
 4. Ejecutar la clase principal según la forma de uso deseada:
-   - **Interfaz gráfica (JavaFX)**: ejecutar `gui/GuiLauncher.java`.
-   - **Consola**: ejecutar `Main.java`.
+    - **Interfaz gráfica (JavaFX)**: ejecutar `gui/GuiLauncher.java`.
+    - **Consola**: ejecutar `Main.java`.
 
 Desde la ejecución del programa se podrán probar las funcionalidades principales del sistema, como la creación de reservas, la gestión de habitaciones, la aplicación de descuentos, la incorporación de servicios adicionales y el cálculo de costos.
 

@@ -22,6 +22,11 @@ public class HabitacionGestor {
 
     public Habitacion crearHabitacion(UsuarioInterno usuario, int numero, HabitacionFactory factory) {
         validarPermiso(usuario, Rol.ADMINISTRADOR);
+        boolean numeroRepetido = habitaciones.stream()
+                .anyMatch(h -> h.getNumero() == numero);
+        if (numeroRepetido) {
+            throw new IllegalArgumentException("Ya existe la habitacion #" + numero + ".");
+        }
         Habitacion habitacion = factory.crearHabitacion(numero);
         habitaciones.add(habitacion);
         return habitacion;

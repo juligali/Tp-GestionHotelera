@@ -2,6 +2,7 @@ package servicios;
 
 import enums.Rol;
 import modelo.estadia.Estadia;
+import modelo.estadia.TipoAmenity;
 import modelo.pago.Pago;
 import modelo.reserva.Reserva;
 import modelo.usuario.UsuarioInterno;
@@ -26,6 +27,11 @@ public class EstadiaGestor {
         validarPermiso(usuario, Rol.RECEPCIONISTA, Rol.ADMINISTRADOR);
         if (!"CONFIRMADA".equals(reserva.getEstadoNombre())) {
             throw new IllegalStateException("Solo se puede hacer check-in de reservas confirmadas.");
+        }
+        boolean yaRegistrada = estadias.stream()
+                .anyMatch(e -> e.getReserva().getId() == reserva.getId());
+        if (yaRegistrada) {
+            throw new IllegalStateException("La reserva ya tiene una estadia registrada.");
         }
         Estadia estadia = new Estadia(reserva);
         estadia.realizarCheckIn();
@@ -60,6 +66,16 @@ public class EstadiaGestor {
 
     public List<Estadia> getEstadias() {
         return new ArrayList<>(estadias);
+    }
+
+    public boolean agregarAmenity(UsuarioInterno usuario, Estadia estadia, TipoAmenity amenity) {
+        validarPermiso(usuario, Rol.RECEPCIONISTA, Rol.ADMINISTRADOR);
+        return estadia.agregarAmenity(amenity);
+    }
+
+    public boolean quitarAmenity(UsuarioInterno usuario, Estadia estadia, TipoAmenity amenity) {
+        validarPermiso(usuario, Rol.RECEPCIONISTA, Rol.ADMINISTRADOR);
+        return estadia.quitarAmenity(amenity);
     }
 
 

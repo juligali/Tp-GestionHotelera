@@ -29,7 +29,11 @@ public class ReservaGestor {
 
     public Reserva crearReserva(UsuarioInterno usuario, Huesped huesped, Habitacion habitacion,
                                 LocalDate fechaIngreso, LocalDate fechaEgreso) {
-        validarPermiso(usuario, Rol.RECEPCIONISTA, Rol.ADMINISTRADOR);
+        validarPermiso(usuario, Rol.RECEPCIONISTA, Rol.ADMINISTRADOR, Rol.HUESPED);
+        if (usuario.getRol() == Rol.HUESPED
+                && !usuario.getEmail().equalsIgnoreCase(huesped.getEmail())) {
+            throw new IllegalStateException("El huesped solo puede crear reservas para su propia cuenta.");
+        }
         builder = new ReservaBuilder(generarId())
                 .conHuesped(huesped)
                 .conHabitacion(habitacion)
@@ -38,39 +42,51 @@ public class ReservaGestor {
         Reserva reserva = builder.build();
         reservas.add(reserva);
         reserva.getHuesped().agregarReserva(reserva);
-        System.out.println("Reserva #" + reserva.getId() + " creada por " + usuario.getNombre());
+        if (usuario.getRol() == Rol.HUESPED) {
+            System.out.println("Reserva #" + reserva.getId()
+                    + " creada desde el portal web por " + usuario.getNombre());
+        } else {
+            System.out.println("Reserva #" + reserva.getId() + " creada por " + usuario.getNombre());
+        }
         return reserva;
     }
 
 
-    public String confirmarReserva(UsuarioInterno usuario, int id, EstrategiaDescuento estrategia) {
+    public void confirmarReserva(UsuarioInterno usuario, int id, EstrategiaDescuento estrategia) {
         validarPermiso(usuario, Rol.RECEPCIONISTA, Rol.ADMINISTRADOR);
         Reserva reserva = buscarPorId(id);
-        if (reserva == null) {
-            throw new IllegalArgumentException("No se encontró la reserva #" + id);
+        if (reserva != null) {
+            if (!"PENDIENTE".equals(reserva.getEstadoNombre())) {
+                throw new IllegalStateException("Solo se puede confirmar una reserva pendiente.");
+            }
+            reserva.cambiarEstrategia(estrategia);
+            reserva.confirmar();
+        } else {
+            System.out.println("No se encontró la reserva #" + id);
         }
-        reserva.cambiarEstrategia(estrategia);
-        return reserva.confirmar();
     }
 
 
-    public String cancelarReserva(UsuarioInterno usuario, int id) {
+    public void cancelarReserva(UsuarioInterno usuario, int id) {
         validarPermiso(usuario, Rol.RECEPCIONISTA, Rol.ADMINISTRADOR, Rol.PERSONAL_ADMINISTRATIVO);
         Reserva reserva = buscarPorId(id);
-        if (reserva == null) {
-            throw new IllegalArgumentException("No se encontró la reserva #" + id);
+        if (reserva != null) {
+            validarEstadoCancelable(reserva);
+            reserva.cancelar();
+        } else {
+            System.out.println("No se encontró la reserva #" + id);
         }
-        return reserva.cancelar();
     }
 
 
-    public String cancelarReservaCliente(Huesped huesped, int id) {
+    public void cancelarReservaCliente(Huesped huesped, int id) {
         Reserva reserva = buscarPorId(id);
         if (reserva == null) {
             throw new IllegalArgumentException("No se encontro la reserva #" + id);
         }
         validarReservaDelHuesped(huesped, reserva);
-        return reserva.cancelar();
+        validarEstadoCancelable(reserva);
+        reserva.cancelar();
     }
 
 
@@ -109,6 +125,13 @@ public class ReservaGestor {
     private void validarReservaDelHuesped(Huesped huesped, Reserva reserva) {
         if (!reserva.getHuesped().getEmail().equalsIgnoreCase(huesped.getEmail())) {
             throw new IllegalStateException("El huesped solo puede operar sobre sus propias reservas.");
+        }
+    }
+
+    private void validarEstadoCancelable(Reserva reserva) {
+        String estado = reserva.getEstadoNombre();
+        if (!"PENDIENTE".equals(estado) && !"CONFIRMADA".equals(estado)) {
+            throw new IllegalStateException("No se puede cancelar una reserva " + estado.toLowerCase() + ".");
         }
     }
 

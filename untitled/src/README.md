@@ -55,9 +55,47 @@ La aplicacion contempla distintos tipos de usuarios:
 3. Verificar que el proyecto tenga configurado el JDK correspondiente y la librería de JavaFX para la interfaz gráfica.
 4. Ejecutar la clase principal según la forma de uso deseada:
     - **Interfaz gráfica (JavaFX)**: ejecutar `gui/GuiLauncher.java`.
-    - **Consola**: ejecutar `Main.java`.
+    - **Consola**: ejecutar `Main.java`. Al iniciar, la clase `Main` ejecuta `cargarDatosIniciales()`, que precarga tres habitaciones de ejemplo (simple, doble y suite), de modo que el sistema queda listo para probar los flujos sin necesidad de cargar datos manualmente.
 
 Desde la ejecución del programa se podrán probar las funcionalidades principales del sistema, como la creación de reservas, la gestión de habitaciones, la aplicación de descuentos, la incorporación de servicios adicionales y el cálculo de costos.
+
+## Casos de Prueba
+
+El funcionamiento del sistema se demuestra de forma guiada a través de la clase `Main`, que se ejecuta por consola con **datos precargados**. Al iniciar, el método `cargarDatosIniciales()` da de alta tres habitaciones de ejemplo:
+
+- Habitación **101** – Simple
+- Habitación **102** – Doble
+- Habitación **201** – Suite
+
+Esto permite recorrer los flujos principales y alternativos del sistema sin tener que cargar datos a mano. El menú está organizado en dos accesos: **acceso interno** (con login para administrador, recepcionista y personal administrativo) y **portal cliente** (identificado por email).
+
+Credenciales internas precargadas:
+
+| Rol | Usuario | Clave |
+|---|---|---|
+| Administrador | `admin` | `admin123` |
+| Recepcionista | `recepcion` | `recep123` |
+| Personal administrativo | `administrativo` | `administ123` |
+
+### Flujos principales (camino feliz)
+
+1. **Ciclo completo de una reserva (interno):** iniciar sesión como recepcionista o administrador → *Crear reserva* (elige tipo de habitación, fechas y huésped) → *Reservas* para confirmarla y asignar el descuento → *Check-in* (crea la estadía y permite cargar amenities) → *Check-out* (genera el pago, el comprobante y finaliza la reserva). Este recorrido ejercita los patrones Builder, State, Strategy, Decorator y Observer en conjunto.
+2. **Reserva desde el portal del cliente:** ingresar por *Portal cliente* con un email → *Disponibilidad* → *Crear reserva* (el huésped solo puede reservar para su propia cuenta) → *Mis reservas* → *Cancelar reserva propia*.
+3. **Gestión de habitaciones:** como administrador, *Crear habitación* (Factory Method) y cambiar el estado de una habitación; consultar disponibilidad y reportes de ocupación.
+4. **Servicios adicionales (amenities):** durante el check-in o desde *Agregar/modificar amenities*, sumar o quitar desayuno, spa y estacionamiento, viendo cómo se recalcula el costo total (Decorator).
+5. **Descuentos:** al confirmar una reserva, elegir entre *Sin descuento*, *Descuento temporada (15%)* o *Cliente frecuente (10%)* y verificar el total resultante (Strategy).
+
+### Flujos alternativos y validaciones
+
+El sistema también contempla los casos de error, que se pueden reproducir desde los menús:
+
+- **Permisos por rol:** intentar una operación no autorizada (por ejemplo, que el personal administrativo cree una habitación, o que un huésped opere sobre una reserva ajena) muestra un mensaje de acceso denegado.
+- **Estados inválidos de la reserva:** confirmar una reserva ya confirmada, cancelar una finalizada o hacer check-in de una reserva no confirmada se rechazan con el mensaje correspondiente (patrón State).
+- **Fechas inválidas:** una fecha de egreso anterior o igual a la de ingreso es rechazada al crear la reserva.
+- **Disponibilidad:** el sistema evita reservas superpuestas detectando cruces de fechas sobre la misma habitación, y no permite reservar habitaciones ocupadas, en limpieza o fuera de servicio.
+- **Check-in/check-out duplicados:** no se puede registrar dos veces el check-in o el check-out de la misma estadía, ni hacer check-out sin un check-in previo.
+
+> **Nota:** En esta etapa los casos de prueba se ejecutan de forma interactiva mediante la clase `Main` con datos precargados. La incorporación de pruebas automatizadas con un framework de testing (por ejemplo, JUnit) figura entre las mejoras a futuro.
 
 ## Patrones aplicados
 

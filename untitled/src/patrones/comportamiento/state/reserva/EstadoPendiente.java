@@ -1,32 +1,23 @@
 package patrones.comportamiento.state.reserva;
 import modelo.reserva.Reserva;
 
-import java.time.LocalDate;
-
-import modelo.habitacion.Habitacion;
-
 
 public class EstadoPendiente implements EstadoReserva {
     @Override
-    public String confirmar(Reserva reserva) {
+    public void confirmar(Reserva reserva) {
+        System.out.println("Reserva confirmada.");
         reserva.setEstado(new EstadoConfirmada());
-        return "Reserva confirmada.";
     }
 
     @Override
-    public String cancelar(Reserva reserva) {
+    public void cancelar(Reserva reserva) {
+        System.out.println("Reserva cancelada desde estado pendiente.");
         reserva.setEstado(new EstadoCancelada());
-        return "Reserva cancelada desde estado pendiente.";
     }
 
     @Override
-    public String finalizar(Reserva reserva) {
-        throw new IllegalStateException("No se puede finalizar una reserva pendiente.");
-    }
-
-    @Override
-    public void modificar(Reserva reserva, Habitacion nuevaHabitacion, LocalDate nuevaFechaIngreso, LocalDate nuevaFechaEgreso) {
-        reserva.aplicarModificacion(nuevaHabitacion, nuevaFechaIngreso, nuevaFechaEgreso);
+    public void finalizar(Reserva reserva) {
+        System.out.println("No se puede finalizar una reserva pendiente.");
     }
 
     @Override

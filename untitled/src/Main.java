@@ -1,6 +1,7 @@
 import enums.EstadoHabitacion;
 import enums.TipoHabitacion;
 import modelo.estadia.Estadia;
+import modelo.estadia.TipoAmenity;
 import modelo.habitacion.Habitacion;
 import modelo.pago.Pago;
 import modelo.reserva.Reserva;
@@ -19,11 +20,6 @@ import patrones.creacionales.factory.HabitacionDobleFactory;
 import patrones.creacionales.factory.HabitacionFactory;
 import patrones.creacionales.factory.HabitacionSimpleFactory;
 import patrones.creacionales.factory.HabitacionSuiteFactory;
-import patrones.estructurales.decorator.ComponenteEstadia;
-import patrones.estructurales.decorator.DesayunoDecorator;
-import patrones.estructurales.decorator.EstacionamientoDecorator;
-import patrones.estructurales.decorator.EstadiaBase;
-import patrones.estructurales.decorator.SpaDecorator;
 import servicios.EstadiaGestor;
 import servicios.HabitacionGestor;
 import servicios.ReservaGestor;
@@ -96,8 +92,7 @@ public class Main {
         UsuarioInterno interno = buscarUsuarioInterno(usuario, clave);
 
         if (interno == null) {
-            System.out.println("Usuario o " +
-                    "clave incorrectos.");
+            System.out.println("Usuario o clave incorrectos.");
             return;
         }
 
@@ -122,23 +117,13 @@ public class Main {
                 System.out.println("5. Realizar check-in");
                 System.out.println("6. Realizar check-out");
                 System.out.println("7. Agregar/modificar amenities de estadia");
-                System.out.println("13. Cambiar estado de habitacion");
             }
 
             System.out.println("8. Listar habitaciones");
             System.out.println("9. Listar reservas");
             System.out.println("10. Listar estadias");
-
-            if (usuario == admin || usuario == administrativo) {
-                System.out.println("11. Reportes");
-            }
-
+            System.out.println("11. Reportes");
             System.out.println("12. Listar pagos");
-
-            if (usuario == admin || usuario == administrativo) {
-                System.out.println("14. Listar huespedes");
-            }
-
             System.out.println("0. Volver");
 
             opcion = leerEntero("Opcion: ");
@@ -184,13 +169,9 @@ public class Main {
 
                     case 10 -> listarEstadias();
 
-                    case 11 -> ejecutarSiAdministrativoOAdmin(usuario, Main::mostrarReportes);
+                    case 11 -> mostrarReportes();
 
                     case 12 -> listarPagos();
-
-                    case 13 -> ejecutarSiRecepcion(usuario, () -> cambiarEstadoHabitacion(usuario));
-
-                    case 14 -> ejecutarSiAdministrativoOAdmin(usuario, Main::listarHuespedes);
 
                     case 0 -> System.out.println("Volviendo...");
 
@@ -204,7 +185,11 @@ public class Main {
     }
 
     private static void portalCliente() {
-        String email = leerTexto("Email del cliente: ");
+        String email = leerTexto("Email del cliente (0 para volver): ");
+
+        if ("0".equals(email)) {
+            return;
+        }
 
         if (email.isBlank() || !email.contains("@")) {
             System.out.println("Ingresa un email valido.");
@@ -220,8 +205,7 @@ public class Main {
             System.out.println("2. Crear Reserva");
             System.out.println("3. Mis Reservas");
             System.out.println("4. Cancelar Reserva");
-            System.out.println("5. Modificar Reserva");
-            System.out.println("6. Mi Perfil");
+            System.out.println("5. Mi Perfil");
             System.out.println("0. Volver");
 
             opcion = leerEntero("Opcion: ");
@@ -232,8 +216,7 @@ public class Main {
                     case 2 -> crearReservaCliente(email);
                     case 3 -> listarReservasCliente(email);
                     case 4 -> cancelarReservaCliente(email);
-                    case 5 -> modificarReservaCliente(email);
-                    case 6 -> mostrarPerfilCliente(email);
+                    case 5 -> mostrarPerfilCliente(email);
                     case 0 -> System.out.println("Volviendo...");
                     default -> System.out.println("Opcion invalida.");
                 }
@@ -258,42 +241,10 @@ public class Main {
         System.out.println("Habitacion creada: #" + habitacion.getNumero() + " - " + habitacion.getTipo());
     }
 
-    private static void cambiarEstadoHabitacion(UsuarioInterno usuario) {
-        System.out.println();
-        System.out.println("=== Cambiar estado de habitacion ===");
-
-        listarHabitaciones();
-
-        if (habitacionGestor.getHabitaciones().isEmpty()) {
-            return;
-        }
-
-        int numero = leerEntero("Numero de habitacion: ");
-
-        habitacionGestor.cambiarEstado(usuario, numero, elegirEstadoHabitacion());
-    }
-
-    private static EstadoHabitacion elegirEstadoHabitacion() {
-        System.out.println("Nuevo estado:");
-        System.out.println("1. Disponible");
-        System.out.println("2. Limpieza");
-        System.out.println("3. Fuera de servicio");
-
-        return switch (leerEntero("Estado: ")) {
-            case 2 -> EstadoHabitacion.LIMPIEZA;
-            case 3 -> EstadoHabitacion.FUERA_DE_SERVICIO;
-            default -> EstadoHabitacion.DISPONIBLE;
-        };
-    }
-
     private static void mostrarDisponibilidadCliente() {
-        List<Habitacion> disponibles = new ArrayList<>();
-
-        for (Habitacion habitacion : habitacionGestor.getHabitaciones()) {
-            if (habitacion.estaDisponible()) {
-                disponibles.add(habitacion);
-            }
-        }
+        List<Habitacion> disponibles = habitacionGestor.getHabitaciones().stream()
+                .filter(Habitacion::estaDisponible)
+                .toList();
 
         if (disponibles.isEmpty()) {
             System.out.println("No hay habitaciones disponibles.");
@@ -308,18 +259,27 @@ public class Main {
     }
 
     private static void crearReservaInterna(UsuarioInterno usuario) {
-        crearReserva(usuario, null);
+        crearReserva(usuario);
     }
 
     private static void crearReservaCliente(String emailCliente) {
-        LocalDate ingreso = leerFecha("Fecha de ingreso (AAAA-MM-DD): ");
-        LocalDate egreso = leerFecha("Fecha de egreso (AAAA-MM-DD): ");
+        System.out.println("Escribi 0 en cualquier seleccion para volver al portal.");
+
+        LocalDate ingreso = leerFechaOVolver("Fecha de ingreso (AAAA-MM-DD, 0 para volver): ");
+        if (ingreso == null) return;
+
+        LocalDate egreso = leerFechaOVolver("Fecha de egreso (AAAA-MM-DD, 0 para volver): ");
+        if (egreso == null) return;
 
         validarFechas(ingreso, egreso);
 
-        TipoHabitacion tipo = elegirTipoHabitacion();
+        TipoHabitacion tipo = elegirTipoHabitacionOVolver();
+        if (tipo == null) return;
 
-        List<Habitacion> disponibles = habitacionGestor.consultarDisponibilidad(ingreso, egreso, tipo);
+        int capacidad = leerEntero("Cantidad de huespedes (0 para volver): ");
+        if (capacidad == 0) return;
+
+        List<Habitacion> disponibles = buscarHabitacionesDisponibles(ingreso, egreso, tipo, capacidad);
 
         if (disponibles.isEmpty()) {
             System.out.println("No hay habitaciones disponibles para esos filtros.");
@@ -332,7 +292,8 @@ public class Main {
             imprimirHabitacionDisponibleCliente(habitacion);
         }
 
-        int numeroHabitacion = leerEntero("Numero de habitacion a reservar: ");
+        int numeroHabitacion = leerEntero("Numero de habitacion a reservar (0 para volver): ");
+        if (numeroHabitacion == 0) return;
 
         Habitacion seleccionada = disponibles.stream()
                 .filter(h -> h.getNumero() == numeroHabitacion)
@@ -342,7 +303,7 @@ public class Main {
         Huesped huesped = buscarOCrearHuespedCliente(emailCliente);
 
         Reserva reserva = reservaGestor.crearReserva(
-                recepcionista,
+                huesped,
                 huesped,
                 seleccionada,
                 ingreso,
@@ -357,19 +318,20 @@ public class Main {
         System.out.println("Total estimado sin amenities: $" + reserva.calcularCostoTotal());
     }
 
-    private static void crearReserva(UsuarioInterno creador, String emailForzado) {
+    private static void crearReserva(UsuarioInterno creador) {
         String nombre = leerTexto("Nombre del huesped: ");
-        String email = emailForzado == null ? leerTexto("Email del huesped: ") : emailForzado;
+        String email = leerTexto("Email del huesped: ");
         String telefono = leerTexto("Telefono del huesped: ");
 
         TipoHabitacion tipo = elegirTipoHabitacion();
+        int capacidad = leerEntero("Cantidad de huespedes: ");
 
         LocalDate ingreso = leerFecha("Fecha de ingreso (AAAA-MM-DD): ");
         LocalDate egreso = leerFecha("Fecha de egreso (AAAA-MM-DD): ");
 
         validarFechas(ingreso, egreso);
 
-        Habitacion habitacion = habitacionGestor.consultarDisponibilidad(ingreso, egreso, tipo)
+        Habitacion habitacion = buscarHabitacionesDisponibles(ingreso, egreso, tipo, capacidad)
                 .stream()
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("No hay habitaciones disponibles para ese tipo."));
@@ -400,9 +362,9 @@ public class Main {
 
         EstrategiaDescuento estrategia = elegirEstrategiaDescuento();
 
-        String resultado = reservaGestor.confirmarReserva(usuario, id, estrategia);
+        reservaGestor.confirmarReserva(usuario, id, estrategia);
 
-        System.out.println(resultado);
+        System.out.println("Reserva confirmada correctamente.");
         System.out.println("Se aplico el descuento seleccionado.");
         System.out.println("Estado actual: " + reserva.getEstadoNombre());
         System.out.println("Total con descuento, sin amenities: $" + reserva.calcularCostoTotal());
@@ -413,13 +375,17 @@ public class Main {
 
         int id = leerEntero("ID de reserva a cancelar: ");
 
-        System.out.println(reservaGestor.cancelarReserva(usuario, id));
+        reservaGestor.cancelarReserva(usuario, id);
     }
 
     private static void cancelarReservaCliente(String email) {
+        boolean tieneReservas = reservaGestor.getReservas().stream()
+                .anyMatch(r -> r.getHuesped().getEmail().equalsIgnoreCase(email));
         listarReservasCliente(email);
+        if (!tieneReservas) return;
 
-        int id = leerEntero("ID de reserva a cancelar: ");
+        int id = leerEntero("ID de reserva a cancelar (0 para volver): ");
+        if (id == 0) return;
 
         Reserva reserva = buscarReserva(id);
 
@@ -434,64 +400,9 @@ public class Main {
                 reserva.getHuesped().getTelefono()
         );
 
-        System.out.println(reservaGestor.cancelarReservaCliente(huesped, id));
-    }
+        reservaGestor.cancelarReservaCliente(huesped, id);
 
-    private static void modificarReservaCliente(String email) {
-        listarReservasCliente(email);
-
-        int id = leerEntero("ID de reserva a modificar: ");
-
-        Reserva reserva = buscarReserva(id);
-
-        if (reserva == null) {
-            System.out.println("No existe la reserva.");
-            return;
-        }
-
-        LocalDate ingreso = leerFecha("Nueva fecha de ingreso (AAAA-MM-DD): ");
-        LocalDate egreso = leerFecha("Nueva fecha de egreso (AAAA-MM-DD): ");
-
-        validarFechas(ingreso, egreso);
-
-        TipoHabitacion tipo = elegirTipoHabitacion();
-
-        List<Habitacion> disponibles = habitacionGestor.consultarDisponibilidad(ingreso, egreso, tipo);
-
-        if (reserva.getHabitacion().getTipo() == tipo
-                && disponibles.stream().noneMatch(h -> h.getNumero() == reserva.getHabitacion().getNumero())) {
-            disponibles.add(reserva.getHabitacion());
-        }
-
-        if (disponibles.isEmpty()) {
-            System.out.println("No hay habitaciones disponibles para esos filtros.");
-            return;
-        }
-
-        System.out.println("Habitaciones disponibles:");
-
-        for (Habitacion habitacion : disponibles) {
-            imprimirHabitacionDisponibleCliente(habitacion);
-        }
-
-        int numeroHabitacion = leerEntero("Numero de habitacion: ");
-
-        Habitacion nuevaHabitacion = disponibles.stream()
-                .filter(h -> h.getNumero() == numeroHabitacion)
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("La habitacion elegida no esta en la lista filtrada."));
-
-        Huesped huesped = buscarOCrearHuesped(
-                reserva.getHuesped().getNombre(),
-                email,
-                reserva.getHuesped().getTelefono()
-        );
-
-        reservaGestor.modificarReservaCliente(huesped, id, nuevaHabitacion, ingreso, egreso);
-
-        System.out.println("Reserva modificada correctamente.");
-        System.out.println("Estado actual: " + reserva.getEstadoNombre());
-        System.out.println("Total habitacion con descuento: $" + reserva.calcularCostoTotal());
+        System.out.println("Reserva cancelada correctamente.");
     }
 
     private static void realizarCheckIn(UsuarioInterno usuario) {
@@ -508,16 +419,8 @@ public class Main {
 
         Estadia estadia = estadiaGestor.realizarCheckIn(usuario, reserva);
 
-        System.out.println("Check-in realizado.");
         System.out.println("Estadia creada para reserva #" + estadia.getReserva().getId());
-        System.out.println("Ahora se cargan los amenities solicitados por el cliente.");
-
-        ComponenteEstadia componente = crearComponenteEstadiaConAmenities(reserva);
-
-        estadiaGestor.agregarServicio(usuario, estadia, componente);
-
-        System.out.println("Amenities cargados: " + estadia.getDescripcionServicios());
-        System.out.println("Total reserva con descuento + amenities: $" + calcularTotalActualReserva(reserva));
+        gestionarAmenities(usuario, estadia);
     }
 
     private static void agregarServicios(UsuarioInterno usuario) {
@@ -532,12 +435,7 @@ public class Main {
             return;
         }
 
-        ComponenteEstadia componente = crearComponenteEstadiaConAmenities(estadia.getReserva());
-
-        estadiaGestor.agregarServicio(usuario, estadia, componente);
-
-        System.out.println("Amenities actualizados: " + estadia.getDescripcionServicios());
-        System.out.println("Total reserva con descuento + amenities: $" + calcularTotalActualReserva(estadia.getReserva()));
+        gestionarAmenities(usuario, estadia);
     }
 
     private static void realizarCheckOut(UsuarioInterno usuario) {
@@ -556,7 +454,7 @@ public class Main {
 
         double totalFinal = calcularTotalActualReserva(reserva);
 
-        String metodo = leerTexto("Metodo de pago: ");
+        String metodo = elegirMetodoPago();
 
         Pago pago = estadiaGestor.realizarCheckOut(
                 usuario,
@@ -663,25 +561,6 @@ public class Main {
         }
     }
 
-    private static void listarHuespedes() {
-        if (huespedes.isEmpty()) {
-            System.out.println("No hay huespedes registrados.");
-            return;
-        }
-
-        for (Huesped huesped : huespedes) {
-            System.out.println(huesped.getNombre() + " - " + huesped.getEmail() + " - " + huesped.getTelefono());
-
-            if (huesped.getReservas().isEmpty()) {
-                System.out.println("  Sin reservas.");
-            } else {
-                for (Reserva reserva : huesped.getReservas()) {
-                    System.out.println("  Reserva #" + reserva.getId() + " - " + reserva.getEstadoNombre());
-                }
-            }
-        }
-    }
-
     private static void mostrarPerfilCliente(String email) {
         long reservasCliente = reservaGestor.getReservas().stream()
                 .filter(r -> r.getHuesped().getEmail().equalsIgnoreCase(email))
@@ -740,6 +619,24 @@ public class Main {
         };
     }
 
+    private static TipoHabitacion elegirTipoHabitacionOVolver() {
+        while (true) {
+            System.out.println("Tipo de habitacion:");
+            System.out.println("1. Simple");
+            System.out.println("2. Doble");
+            System.out.println("3. Suite");
+            System.out.println("0. Volver");
+
+            switch (leerEntero("Tipo: ")) {
+                case 0: return null;
+                case 1: return TipoHabitacion.SIMPLE;
+                case 2: return TipoHabitacion.DOBLE;
+                case 3: return TipoHabitacion.SUITE;
+                default: System.out.println("Opcion invalida.");
+            }
+        }
+    }
+
     private static EstrategiaDescuento elegirEstrategiaDescuento() {
         System.out.println("Tipo de descuento:");
         System.out.println("1. Sin descuento");
@@ -750,6 +647,19 @@ public class Main {
             case 2 -> new DescuentoTemporada();
             case 3 -> new DescuentoClienteFrecuente();
             default -> new SinDescuento();
+        };
+    }
+
+    private static String elegirMetodoPago() {
+        System.out.println("Metodo de pago:");
+        System.out.println("1. Efectivo");
+        System.out.println("2. Tarjeta");
+        System.out.println("3. Transferencia");
+
+        return switch (leerEntero("Opcion: ")) {
+            case 2 -> "Tarjeta";
+            case 3 -> "Transferencia";
+            default -> "Efectivo";
         };
     }
 
@@ -819,6 +729,41 @@ public class Main {
         return null;
     }
 
+    private static List<Habitacion> buscarHabitacionesDisponibles(
+            LocalDate ingreso,
+            LocalDate egreso,
+            TipoHabitacion tipo,
+            int capacidadMinima
+    ) {
+        if (capacidadMinima <= 0) {
+            throw new IllegalArgumentException("La cantidad de huespedes debe ser mayor a cero.");
+        }
+
+        List<Habitacion> disponibles = new ArrayList<>();
+        for (Habitacion habitacion : habitacionGestor.getHabitaciones()) {
+            if (habitacion.getTipo() != tipo || habitacion.getCapacidad() < capacidadMinima) {
+                continue;
+            }
+            if (habitacion.getEstado() == EstadoHabitacion.OCUPADA
+                    || habitacion.getEstado() == EstadoHabitacion.LIMPIEZA
+                    || habitacion.getEstado() == EstadoHabitacion.FUERA_DE_SERVICIO) {
+                continue;
+            }
+
+            boolean tieneCruce = reservaGestor.getReservas().stream()
+                    .filter(r -> r.getHabitacion().getNumero() == habitacion.getNumero())
+                    .filter(r -> !"CANCELADA".equals(r.getEstadoNombre())
+                            && !"FINALIZADA".equals(r.getEstadoNombre()))
+                    .anyMatch(r -> ingreso.isBefore(r.getFechaEgreso())
+                            && egreso.isAfter(r.getFechaIngreso()));
+
+            if (!tieneCruce) {
+                disponibles.add(habitacion);
+            }
+        }
+        return disponibles;
+    }
+
     private static long contarHabitaciones(EstadoHabitacion estado) {
         return habitacionGestor.getHabitaciones()
                 .stream()
@@ -865,30 +810,62 @@ public class Main {
         }
     }
 
-    private static ComponenteEstadia crearComponenteEstadiaConAmenities(Reserva reserva) {
-        int noches = (int) ChronoUnit.DAYS.between(
-                reserva.getFechaIngreso(),
-                reserva.getFechaEgreso()
-        );
+    private static void gestionarAmenities(UsuarioInterno usuario, Estadia estadia) {
+        while (true) {
+            System.out.println();
+            System.out.println("=== Gestion de amenities ===");
+            System.out.println("Amenities actuales: " + descripcionAmenitiesSeleccionados(estadia));
+            System.out.println("1. Agregar amenity");
+            System.out.println("2. Quitar amenity");
+            System.out.println("0. Terminar y volver");
 
-        ComponenteEstadia componente = new EstadiaBase(
-                reserva.getHabitacion(),
-                noches
-        );
+            int accion = leerEntero("Opcion: ");
+            if (accion == 0) return;
+            if (accion != 1 && accion != 2) {
+                System.out.println("Opcion invalida.");
+                continue;
+            }
 
-        if (leerSiNo("Agregar desayuno? (s/n): ")) {
-            componente = new DesayunoDecorator(componente);
+            TipoAmenity amenity = elegirAmenity();
+            if (amenity == null) continue;
+
+            if (accion == 1) {
+                boolean agregado = estadiaGestor.agregarAmenity(usuario, estadia, amenity);
+                System.out.println(agregado
+                        ? amenity.getNombre() + " agregado correctamente."
+                        : amenity.getNombre() + " ya esta agregado.");
+            } else {
+                boolean quitado = estadiaGestor.quitarAmenity(usuario, estadia, amenity);
+                System.out.println(quitado
+                        ? amenity.getNombre() + " quitado correctamente."
+                        : amenity.getNombre() + " no esta agregado.");
+            }
+
+            System.out.println("Extra actual por amenities: $" + calcularCostoAmenities(estadia.getReserva()));
+            System.out.println("Total actualizado: $" + calcularTotalActualReserva(estadia.getReserva()));
         }
+    }
 
-        if (leerSiNo("Agregar spa? (s/n): ")) {
-            componente = new SpaDecorator(componente);
-        }
+    private static TipoAmenity elegirAmenity() {
+        System.out.println("Selecciona el amenity:");
+        System.out.println("1. Desayuno - $" + TipoAmenity.DESAYUNO.getPrecio());
+        System.out.println("2. Spa - $" + TipoAmenity.SPA.getPrecio());
+        System.out.println("3. Estacionamiento - $" + TipoAmenity.ESTACIONAMIENTO.getPrecio());
+        System.out.println("0. Volver");
 
-        if (leerSiNo("Agregar estacionamiento? (s/n): ")) {
-            componente = new EstacionamientoDecorator(componente);
-        }
+        return switch (leerEntero("Amenity: ")) {
+            case 1 -> TipoAmenity.DESAYUNO;
+            case 2 -> TipoAmenity.SPA;
+            case 3 -> TipoAmenity.ESTACIONAMIENTO;
+            default -> null;
+        };
+    }
 
-        return componente;
+    private static String descripcionAmenitiesSeleccionados(Estadia estadia) {
+        if (estadia.getAmenities().isEmpty()) return "Ninguno";
+        return estadia.getAmenities().stream()
+                .map(a -> a.getNombre() + " ($" + a.getPrecio() + ")")
+                .collect(java.util.stream.Collectors.joining(", "));
     }
 
     private static double calcularCostoBaseSinDescuento(Reserva reserva) {
@@ -957,15 +934,6 @@ public class Main {
         accion.run();
     }
 
-    private static void ejecutarSiAdministrativoOAdmin(UsuarioInterno usuario, Runnable accion) {
-        if (usuario != admin && usuario != administrativo) {
-            System.out.println("Esta opcion es solo para administrador o personal administrativo.");
-            return;
-        }
-
-        accion.run();
-    }
-
     private static int leerEntero(String mensaje) {
         while (true) {
             System.out.print(mensaje);
@@ -997,8 +965,19 @@ public class Main {
         }
     }
 
-    private static boolean leerSiNo(String mensaje) {
-        String respuesta = leerTexto(mensaje);
-        return respuesta.equalsIgnoreCase("s") || respuesta.equalsIgnoreCase("si");
+    private static LocalDate leerFechaOVolver(String mensaje) {
+        while (true) {
+            String valor = leerTexto(mensaje);
+            if ("0".equals(valor)) {
+                return null;
+            }
+
+            try {
+                return LocalDate.parse(valor);
+            } catch (Exception e) {
+                System.out.println("Formato invalido. Usa AAAA-MM-DD o 0 para volver.");
+            }
+        }
     }
+
 }

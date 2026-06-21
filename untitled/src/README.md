@@ -246,6 +246,12 @@ El polimorfismo se aplica en varios patrones del proyecto:
 
 Gracias al polimorfismo, se evita el uso excesivo de condicionales y se mejora la extensibilidad del sistema.
 
+## Diagrama de casos de uso
+https://tinyurl.com/msuaur3d
+
+## Diagrama de clases
+https://tinyurl.com/ytm4j34d
+
 ## Distribución de tareas
 
 El trabajo fue desarrollado de manera colaborativa, pero cada integrante se enfocó en distintas partes del proyecto:

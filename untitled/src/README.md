@@ -1,4 +1,4 @@
-# BRAGADO - Sistema de Gestión Hotelera y Servicios para Huéspedes
+# Bragado - Sistema de Gestion Hotelera y servicios para huespedes
 
 ## Integrantes del grupo
 
@@ -20,10 +20,12 @@ La aplicación cuenta con una interfaz gráfica desarrollada en JavaFX y tambié
 
 ## Roles del sistema
 
-- **Administrador**: gestiona habitaciones (incluido el cambio de estado), huéspedes, reservas, estadías, reportes y pagos.
-- **Recepcionista**: gestiona reservas, check-in, check-out, servicios, pagos y el cambio de estado de las habitaciones.
-- **Personal administrativo**: consulta reservas, huéspedes, reportes y pagos.
-- **Huésped/cliente**: consulta disponibilidad, crea reservas y administra sus propias reservas (consulta, modificación y cancelación).
+La aplicacion contempla distintos tipos de usuarios:
+
+- Administrador: consulta habitaciones disponibles y gestiona huespedes, reservas, estadias, reportes y pagos.
+- Recepcionista: gestiona reservas, check-in, check-out, servicios y pagos.
+- Personal administrativo: consulta reservas, reportes y pagos.
+- Huesped/cliente: consulta disponibilidad, crea reservas y administra sus propias reservas.
 
 ## Funcionalidades principales
 
@@ -269,6 +271,7 @@ src/
 │   │   └── Reserva.java
 │   ├── estadia/
 │   │   └── Estadia.java
+│   │   └── TipoAmenity.java
 │   └── pago/
 │       └── Pago.java
 │

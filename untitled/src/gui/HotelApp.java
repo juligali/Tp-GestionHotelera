@@ -391,11 +391,24 @@ public class HotelApp extends Application {
     }
 
     private BorderPane crearVistaHabitacionesAdmin() {
-        actualizarHabitacionesDisponiblesInterno();
+        DatePicker ingreso = new DatePicker(LocalDate.now().plusDays(1));
+        DatePicker egreso = new DatePicker(LocalDate.now().plusDays(2));
+        cargarDisponibilidadPorFecha(ingreso, egreso, habitacionesDisponiblesInterno, null);
         tablaHabitacionesAdmin = crearTablaHabitaciones(habitacionesDisponiblesInterno);
-        Label ayuda = new Label("Se muestran únicamente las habitaciones con estado DISPONIBLE.");
+
+        Button buscar = new Button("Buscar disponibilidad");
+        buscar.getStyleClass().add("button-secondary");
+        buscar.setOnAction(e -> cargarDisponibilidadPorFecha(
+                ingreso, egreso, habitacionesDisponiblesInterno, tablaHabitacionesAdmin));
+
+        Label ayuda = new Label("Selecciona un rango para ver las habitaciones sin reservas cruzadas en esas fechas.");
         ayuda.getStyleClass().add("section-help");
-        VBox top = new VBox(ayuda);
+        HBox filtros = new HBox(10,
+                new Label("Ingreso:"), ingreso,
+                new Label("Egreso:"), egreso,
+                buscar);
+        filtros.setAlignment(Pos.CENTER_LEFT);
+        VBox top = new VBox(10, ayuda, filtros);
         top.getStyleClass().add("toolbar-card");
         BorderPane pane = new BorderPane(tablaHabitacionesAdmin);
         pane.setTop(top);
@@ -680,17 +693,27 @@ public class HotelApp extends Application {
     }
 
     private BorderPane crearVistaDisponibilidadCliente() {
-        habitacionesCliente.setAll(habitacionGestor.getHabitaciones().stream()
-                .filter(Habitacion::estaDisponible)
-                .toList());
+        DatePicker ingreso = new DatePicker(LocalDate.now().plusDays(1));
+        DatePicker egreso = new DatePicker(LocalDate.now().plusDays(2));
+        cargarDisponibilidadPorFecha(ingreso, egreso, habitacionesCliente, null);
         tablaHabitacionesCliente = crearTablaHabitaciones(habitacionesCliente);
 
-        Label ayuda = new Label("Estas son todas las habitaciones disponibles actualmente. Para buscar por fechas, tipo y capacidad usa Crear reserva.");
+        Button buscar = new Button("Buscar disponibilidad");
+        buscar.getStyleClass().add("button-secondary");
+        buscar.setOnAction(e -> cargarDisponibilidadPorFecha(
+                ingreso, egreso, habitacionesCliente, tablaHabitacionesCliente));
+
+        Label ayuda = new Label("Selecciona las fechas para consultar todas las habitaciones libres durante ese periodo.");
         ayuda.getStyleClass().add("section-help");
         ayuda.setWrapText(true);
 
         BorderPane pane = new BorderPane(tablaHabitacionesCliente);
-        VBox top = new VBox(ayuda);
+        HBox filtros = new HBox(10,
+                new Label("Ingreso:"), ingreso,
+                new Label("Egreso:"), egreso,
+                buscar);
+        filtros.setAlignment(Pos.CENTER_LEFT);
+        VBox top = new VBox(10, ayuda, filtros);
         top.getStyleClass().add("toolbar-card");
         pane.setTop(top);
         pane.getStyleClass().add("content-pane");
@@ -1152,7 +1175,6 @@ public class HotelApp extends Application {
 
     private void refrescarTablas() {
         habitaciones.setAll(habitacionGestor.getHabitaciones());
-        actualizarHabitacionesDisponiblesInterno();
         reservas.setAll(reservaGestor.getReservas());
         estadias.setAll(estadiaGestor.getEstadias());
         pagos.setAll(estadiaGestor.getPagos());
@@ -1170,10 +1192,17 @@ public class HotelApp extends Application {
         }
     }
 
-    private void actualizarHabitacionesDisponiblesInterno() {
-        habitacionesDisponiblesInterno.setAll(habitacionGestor.getHabitaciones().stream()
-                .filter(Habitacion::estaDisponible)
-                .toList());
+    private void cargarDisponibilidadPorFecha(DatePicker ingreso, DatePicker egreso,
+                                              ObservableList<Habitacion> destino,
+                                              TableView<Habitacion> tabla) {
+        try {
+            validarFechas(ingreso.getValue(), egreso.getValue());
+            destino.setAll(habitacionGestor.consultarDisponibilidad(
+                    ingreso.getValue(), egreso.getValue(), reservaGestor.getReservas()));
+            if (tabla != null) tabla.refresh();
+        } catch (Exception ex) {
+            mostrarError("No se pudo consultar disponibilidad", ex);
+        }
     }
 
     private UsuarioInterno buscarUsuarioInterno(String usuario, String clave) {

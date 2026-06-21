@@ -47,16 +47,28 @@ public class HabitacionGestor {
     public List<Habitacion> consultarDisponibilidad(LocalDate fechaIngreso, LocalDate fechaEgreso,
                                                     TipoHabitacion tipo, int capacidadMinima,
                                                     List<Reserva> reservas) {
-        if (fechaIngreso == null || fechaEgreso == null || !fechaEgreso.isAfter(fechaIngreso)) {
-            throw new IllegalArgumentException("La fecha de egreso debe ser posterior al ingreso.");
-        }
+        List<Habitacion> disponiblesPorFecha = consultarDisponibilidad(fechaIngreso, fechaEgreso, reservas);
         if (capacidadMinima <= 0) {
             throw new IllegalArgumentException("La cantidad de huespedes debe ser mayor a cero.");
         }
 
         List<Habitacion> disponibles = new ArrayList<>();
+        for (Habitacion habitacion : disponiblesPorFecha) {
+            if (habitacion.getTipo() == tipo && habitacion.getCapacidad() >= capacidadMinima) {
+                disponibles.add(habitacion);
+            }
+        }
+        return disponibles;
+    }
+
+    public List<Habitacion> consultarDisponibilidad(LocalDate fechaIngreso, LocalDate fechaEgreso,
+                                                    List<Reserva> reservas) {
+        if (fechaIngreso == null || fechaEgreso == null || !fechaEgreso.isAfter(fechaIngreso)) {
+            throw new IllegalArgumentException("La fecha de egreso debe ser posterior al ingreso.");
+        }
+
+        List<Habitacion> disponibles = new ArrayList<>();
         for (Habitacion habitacion : habitaciones) {
-            if (habitacion.getTipo() != tipo || habitacion.getCapacidad() < capacidadMinima) continue;
             if (habitacion.getEstado() == EstadoHabitacion.OCUPADA
                     || habitacion.getEstado() == EstadoHabitacion.LIMPIEZA
                     || habitacion.getEstado() == EstadoHabitacion.FUERA_DE_SERVICIO) continue;

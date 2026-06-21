@@ -4,15 +4,6 @@
     -fx-background-color: #f7f5f1;
     -fx-text-fill: #24221f;
 }
-.close-button {
-    -fx-background-color: transparent;
-    -fx-text-fill: -fx-text-base-color;
-    -fx-font-size: 16px;
-    -fx-cursor: hand;
-}
-.close-button:hover {
-    -fx-text-fill: derive(red, -10%);
-}
 
 .app-root,
 .app-shell {
@@ -133,6 +124,23 @@
 
 .toolbar-card {
     -fx-padding: 18;
+}
+
+.report-grid {
+    -fx-hgap: 28;
+    -fx-vgap: 12;
+}
+
+.report-label {
+    -fx-text-fill: #5c554d;
+    -fx-font-size: 15px;
+    -fx-font-weight: 700;
+}
+
+.report-value {
+    -fx-text-fill: #241f1a;
+    -fx-font-size: 16px;
+    -fx-font-weight: 800;
 }
 
 .feature-panel {
@@ -326,4 +334,3 @@
 .alert {
     -fx-font-family: "Segoe UI Variable Display", "Segoe UI", "Arial";
 }
-
